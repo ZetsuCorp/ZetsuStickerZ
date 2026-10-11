@@ -1,0 +1,381 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sticker Mania | Account</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #090515;
+  color: white;
+  font-family: Arial, sans-serif;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 20px;
+  background: #180c2b;
+  border-bottom: 2px solid #a635f2;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+button, .button {
+  background: #d837f2;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 20px;
+  cursor: pointer;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+button:hover, .button:hover {
+  background: #b82bd4;
+}
+
+main {
+  width: min(900px, 94%);
+  margin: 40px auto;
+}
+
+.account-panel {
+  background: #211035;
+  border: 2px solid #bd3aff;
+  border-radius: 18px;
+  padding: 25px;
+  margin-bottom: 25px;
+}
+
+.account-panel h2 {
+  margin-top: 0;
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.avatar {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #432060;
+}
+
+.username {
+  font-size: 22px;
+  font-weight: bold;
+  overflow-wrap: anywhere;
+}
+
+.account-id {
+  font-size: 12px;
+  color: #bba9ce;
+  overflow-wrap: anywhere;
+  margin-top: 6px;
+}
+
+.collection {
+  min-height: 180px;
+  border: 2px dashed #683c87;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #bba9ce;
+  padding: 20px;
+}
+
+.status {
+  color: #ff9cdd;
+  margin-top: 15px;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hidden {
+  display: none;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>STICKER MANIA</h1>
+  <a class="button" href="index.html">BACK TO MACHINE</a>
+</header>
+
+<main>
+
+  <!-- ACCOUNT -->
+  <section class="account-panel">
+
+    <h2>MY ACCOUNT</h2>
+
+    <div id="loading">
+      Checking Discord session...
+    </div>
+
+    <div id="profile" class="profile hidden">
+
+      <img
+        id="avatar"
+        class="avatar"
+        alt="Discord Avatar"
+      >
+
+      <div>
+        <div id="username" class="username"></div>
+        <div id="account-id" class="account-id"></div>
+      </div>
+
+    </div>
+
+    <p id="status" class="status"></p>
+
+    <div class="actions">
+      <button id="signin" class="hidden">
+        SIGN IN WITH DISCORD
+      </button>
+
+      <button id="signout" class="hidden">
+        SIGN OUT
+      </button>
+    </div>
+
+  </section>
+
+  <!-- COLLECTION -->
+  <section class="account-panel">
+
+    <h2>MY COLLECTION</h2>
+
+    <div class="collection" id="collection">
+      Your collected items will appear here.
+    </div>
+
+  </section>
+
+</main>
+
+<script>
+
+// ========================================
+// SUPABASE
+// ========================================
+
+const SUPABASE_URL =
+  "https://jqvnrdjrkdjgjbmqmbbl.supabase.co";
+
+const SUPABASE_KEY =
+  "sb_publishable_jmEahTk4OssD_IrOZq_6iQ_P6QFFJr6";
+
+const client = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+
+// ========================================
+// ELEMENTS
+// ========================================
+
+const loading = document.getElementById("loading");
+const profile = document.getElementById("profile");
+const avatar = document.getElementById("avatar");
+const username = document.getElementById("username");
+const accountId = document.getElementById("account-id");
+const status = document.getElementById("status");
+const signin = document.getElementById("signin");
+const signout = document.getElementById("signout");
+const collection = document.getElementById("collection");
+
+// ========================================
+// DISPLAY ACCOUNT
+// ========================================
+
+function showAccount(user) {
+
+  loading.classList.add("hidden");
+  profile.classList.remove("hidden");
+
+  signin.classList.add("hidden");
+  signout.classList.remove("hidden");
+
+  const metadata = user.user_metadata || {};
+
+  username.textContent =
+    metadata.global_name ||
+    metadata.preferred_username ||
+    metadata.user_name ||
+    metadata.full_name ||
+    metadata.name ||
+    "Discord User";
+
+  accountId.textContent = "Account: " + user.id;
+
+  const avatarUrl = metadata.avatar_url;
+
+  if (avatarUrl) {
+    avatar.src = avatarUrl;
+    avatar.classList.remove("hidden");
+  } else {
+    avatar.removeAttribute("src");
+    avatar.classList.add("hidden");
+  }
+
+  collection.textContent =
+    "Your collected items will appear here.";
+}
+
+// ========================================
+// NO SESSION
+// ========================================
+
+function showSignedOut() {
+
+  loading.classList.add("hidden");
+  profile.classList.add("hidden");
+
+  signin.classList.remove("hidden");
+  signout.classList.add("hidden");
+
+  status.textContent =
+    "Sign in with Discord to access your account.";
+
+  collection.textContent =
+    "Sign in to view your collection.";
+}
+
+// ========================================
+// CHECK SESSION
+// ========================================
+
+async function loadAccount() {
+
+  const { data, error } = await client.auth.getUser();
+
+  if (error || !data.user) {
+    showSignedOut();
+    return;
+  }
+
+  const user = data.user;
+
+  showAccount(user);
+
+  // Read the account created by index.html.
+  const { data: account, error: accountError } =
+    await client
+      .from("sticker_accounts")
+      .select("id, discord_id, username")
+      .eq("id", user.id)
+      .maybeSingle();
+
+  if (accountError) {
+
+    status.textContent =
+      "Account lookup failed: " + accountError.message;
+
+    return;
+  }
+
+  if (account) {
+
+    username.textContent =
+      account.username || username.textContent;
+
+    status.textContent = "";
+
+  } else {
+
+    status.textContent =
+      "Discord connected. Account record is not available yet.";
+  }
+}
+
+// ========================================
+// SIGN IN
+// ========================================
+
+signin.onclick = async () => {
+
+  status.textContent = "";
+
+  const { error } = await client.auth.signInWithOAuth({
+    provider: "discord",
+    options: {
+      redirectTo:
+        window.location.origin +
+        window.location.pathname,
+      scopes: "identify"
+    }
+  });
+
+  if (error) {
+    status.textContent = error.message;
+  }
+};
+
+// ========================================
+// SIGN OUT
+// ========================================
+
+signout.onclick = async () => {
+
+  const { error } = await client.auth.signOut();
+
+  if (error) {
+    status.textContent = error.message;
+    return;
+  }
+
+  showSignedOut();
+};
+
+// ========================================
+// SESSION UPDATES
+// ========================================
+
+client.auth.onAuthStateChange((event, session) => {
+
+  if (event === "SIGNED_OUT") {
+    showSignedOut();
+  }
+
+  if (event === "SIGNED_IN" && session?.user) {
+    setTimeout(loadAccount, 0);
+  }
+});
+
+loadAccount();
+
+</script>
+
+</body>
+</html>
