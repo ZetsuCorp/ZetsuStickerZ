@@ -9,7 +9,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   margin: 0;
@@ -52,6 +54,7 @@ body {
   outline: 3px solid white;
 }
 
+/* PAY BUTTON */
 .pay-button {
   left: 77.5%;
   top: 27.5%;
@@ -59,6 +62,7 @@ body {
   height: 23.4%;
 }
 
+/* SIGN IN BUTTON */
 .signin-button {
   left: 78.4%;
   top: 50.4%;
@@ -66,6 +70,7 @@ body {
   height: 13.4%;
 }
 
+/* OVERLAY */
 .overlay {
   display: none;
   position: fixed;
@@ -123,9 +128,10 @@ body {
 <!-- GAME CONTAINER -->
 <div class="game-container" id="game-container">
 
+  <!-- MACHINE IMAGE -->
   <img
     class="machine"
-    src="sticker-machine.png"
+    src="assets/sticker-machine.png"
     alt="Sticker Mania Machine"
   >
 
@@ -214,6 +220,7 @@ function openOverlay(type) {
     authButton.style.display = "inline-block";
 
     if (currentUser) {
+
       description.textContent =
         "Signed in as " +
         (currentUser.user_metadata?.full_name ||
@@ -224,6 +231,7 @@ function openOverlay(type) {
       authButton.textContent = "Sign Out";
 
     } else {
+
       description.textContent =
         "Sign in with your Discord account.";
 
