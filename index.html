@@ -1,0 +1,328 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sticker Mania</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #090515;
+  color: white;
+  font-family: Arial, sans-serif;
+}
+
+.game-container {
+  position: relative;
+  width: min(100vw, 700px);
+  margin: auto;
+  aspect-ratio: 1;
+}
+
+.machine {
+  width: 100%;
+  display: block;
+}
+
+.dispenser-container {
+  position: absolute;
+  left: 30.5%;
+  top: 83.5%;
+  width: 34%;
+  height: 10.5%;
+  pointer-events: none;
+}
+
+.hotspot {
+  position: absolute;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: transparent;
+  font-size: 0;
+}
+
+.hotspot:focus-visible {
+  outline: 3px solid white;
+}
+
+.pay-button {
+  left: 77.5%;
+  top: 27.5%;
+  width: 14.3%;
+  height: 23.4%;
+}
+
+.signin-button {
+  left: 78.4%;
+  top: 50.4%;
+  width: 13%;
+  height: 13.4%;
+}
+
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #05020be0;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  padding: 20px;
+}
+
+.overlay.open {
+  display: flex;
+}
+
+.panel {
+  position: relative;
+  background: #211035;
+  border: 2px solid #bd3aff;
+  border-radius: 18px;
+  padding: 32px;
+  width: min(420px, 95vw);
+  text-align: center;
+}
+
+.close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 28px;
+  cursor: pointer;
+}
+
+.action {
+  background: #d837f2;
+  border: none;
+  color: white;
+  padding: 12px 22px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+#auth-status {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+</style>
+</head>
+
+<body>
+
+<!-- GAME CONTAINER -->
+<div class="game-container" id="game-container">
+
+  <img
+    class="machine"
+    src="sticker-machine.png"
+    alt="Sticker Mania Machine"
+  >
+
+  <!-- DISPENSER CONTAINER -->
+  <div
+    class="dispenser-container"
+    id="dispenser-container">
+  </div>
+
+  <!-- BUTTON 1: PAY -->
+  <button
+    class="hotspot pay-button"
+    id="pay-button"
+    aria-label="Pay with AWT">
+  </button>
+
+  <!-- BUTTON 2: SIGN IN -->
+  <button
+    class="hotspot signin-button"
+    id="signin-button"
+    aria-label="Sign in">
+  </button>
+
+</div>
+
+<!-- OVERLAY -->
+<div class="overlay" id="overlay">
+  <div class="panel">
+
+    <button class="close" id="close">×</button>
+
+    <h2 id="overlay-title"></h2>
+    <p id="overlay-description"></p>
+
+    <button
+      class="action"
+      id="discord-auth"
+      style="display:none">
+      Continue with Discord
+    </button>
+
+    <p id="auth-status"></p>
+
+  </div>
+</div>
+
+<script>
+
+// SUPABASE CONFIGURATION
+const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+const SUPABASE_KEY = "YOUR_SUPABASE_PUBLISHABLE_KEY";
+
+const configured =
+  SUPABASE_URL.startsWith("https://") &&
+  !SUPABASE_KEY.startsWith("YOUR_");
+
+const client = configured
+  ? window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    )
+  : null;
+
+let currentUser = null;
+
+const overlay = document.getElementById("overlay");
+const title = document.getElementById("overlay-title");
+const description = document.getElementById("overlay-description");
+const authButton = document.getElementById("discord-auth");
+const authStatus = document.getElementById("auth-status");
+
+// OPEN OVERLAY
+function openOverlay(type) {
+
+  authStatus.textContent = "";
+
+  if (type === "pay") {
+
+    title.textContent = "PAY WITH $AWT";
+    description.textContent = "Payment integration pending.";
+    authButton.style.display = "none";
+
+  } else {
+
+    title.textContent = "SIGN IN";
+    authButton.style.display = "inline-block";
+
+    if (currentUser) {
+      description.textContent =
+        "Signed in as " +
+        (currentUser.user_metadata?.full_name ||
+         currentUser.user_metadata?.name ||
+         currentUser.email ||
+         "Discord user");
+
+      authButton.textContent = "Sign Out";
+
+    } else {
+      description.textContent =
+        "Sign in with your Discord account.";
+
+      authButton.textContent = "Continue with Discord";
+
+      if (!client) {
+        authStatus.textContent =
+          "Configure Supabase to enable sign-in.";
+      }
+    }
+  }
+
+  overlay.classList.add("open");
+}
+
+// CLOSE OVERLAY
+function closeOverlay() {
+  overlay.classList.remove("open");
+}
+
+// DISCORD AUTHENTICATION
+authButton.onclick = async () => {
+
+  if (!client) {
+    authStatus.textContent =
+      "Supabase configuration required.";
+    return;
+  }
+
+  authButton.disabled = true;
+
+  try {
+
+    if (currentUser) {
+
+      const { error } = await client.auth.signOut();
+      if (error) throw error;
+
+      currentUser = null;
+      openOverlay("signin");
+
+    } else {
+
+      const { error } = await client.auth.signInWithOAuth({
+        provider: "discord",
+        options: {
+          redirectTo:
+            window.location.origin +
+            window.location.pathname
+        }
+      });
+
+      if (error) throw error;
+    }
+
+  } catch (error) {
+    authStatus.textContent = error.message;
+  } finally {
+    authButton.disabled = false;
+  }
+};
+
+// RESTORE USER SESSION
+if (client) {
+
+  client.auth.getUser().then(({ data, error }) => {
+    if (!error) currentUser = data.user || null;
+  });
+
+  client.auth.onAuthStateChange((_event, session) => {
+    currentUser = session?.user || null;
+
+    if (
+      overlay.classList.contains("open") &&
+      title.textContent === "SIGN IN"
+    ) {
+      openOverlay("signin");
+    }
+  });
+}
+
+// BUTTON EVENTS
+document.getElementById("pay-button").onclick =
+  () => openOverlay("pay");
+
+document.getElementById("signin-button").onclick =
+  () => openOverlay("signin");
+
+document.getElementById("close").onclick = closeOverlay;
+
+overlay.onclick = (event) => {
+  if (event.target === overlay) closeOverlay();
+};
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeOverlay();
+});
+
+</script>
+
+</body>
+</html>
