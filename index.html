@@ -116,6 +116,11 @@ body {
   cursor: pointer;
 }
 
+.action:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 #auth-status {
   font-size: 13px;
   overflow-wrap: anywhere;
@@ -173,20 +178,25 @@ body {
       Continue with Discord
     </button>
 
-    <p id="auth-status"></p>
+    <p id="auth-status" role="status"></p>
 
   </div>
 </div>
 
 <script>
 
+// ========================================
 // SUPABASE CONFIGURATION
+// ========================================
+
 const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
 const SUPABASE_KEY = "YOUR_SUPABASE_PUBLISHABLE_KEY";
 
 const configured =
   SUPABASE_URL.startsWith("https://") &&
-  !SUPABASE_KEY.startsWith("YOUR_");
+  !SUPABASE_URL.includes("YOUR_") &&
+  SUPABASE_KEY.length > 0 &&
+  !SUPABASE_KEY.includes("YOUR_");
 
 const client = configured
   ? window.supabase.createClient(
@@ -196,6 +206,11 @@ const client = configured
   : null;
 
 let currentUser = null;
+let activeOverlay = null;
+
+// ========================================
+// ELEMENTS
+// ========================================
 
 const overlay = document.getElementById("overlay");
 const title = document.getElementById("overlay-title");
@@ -203,9 +218,98 @@ const description = document.getElementById("overlay-description");
 const authButton = document.getElementById("discord-auth");
 const authStatus = document.getElementById("auth-status");
 
+// ========================================
+// DISCORD ACCOUNT INFORMATION
+// ========================================
+
+function getDiscordUsername(user) {
+  if (!user) return "Discord user";
+
+  return (
+    user.user_metadata?.custom_claims?.global_name ||
+    user.user_metadata?.global_name ||
+    user.user_metadata?.preferred_username ||
+    user.user_metadata?.user_name ||
+    user.user_metadata?.full_name ||
+    user.user_metadata?.name ||
+    user.email ||
+    "Discord user"
+  );
+}
+
+function getDiscordId(user) {
+  if (!user) return null;
+
+  const discordIdentity = user.identities?.find(
+    identity => identity.provider === "discord"
+  );
+
+  return (
+    discordIdentity?.id ||
+    discordIdentity?.identity_data?.provider_id ||
+    user.user_metadata?.provider_id ||
+    user.user_metadata?.sub ||
+    null
+  );
+}
+
+// ========================================
+// CREATE OR UPDATE STICKER ACCOUNT
+// ========================================
+
+async function syncStickerAccount(user) {
+  if (!client || !user) return;
+
+  const account = {
+    id: user.id,
+    discord_id: getDiscordId(user),
+    username: getDiscordUsername(user),
+    updated_at: new Date().toISOString()
+  };
+
+  // First check whether the account exists.
+  const { data: existing, error: lookupError } =
+    await client
+      .from("sticker_accounts")
+      .select("id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+  if (lookupError) {
+    console.error("Account lookup failed:", lookupError);
+    throw lookupError;
+  }
+
+  if (existing) {
+
+    const { error } = await client
+      .from("sticker_accounts")
+      .update({
+        discord_id: account.discord_id,
+        username: account.username,
+        updated_at: account.updated_at
+      })
+      .eq("id", user.id);
+
+    if (error) throw error;
+
+  } else {
+
+    const { error } = await client
+      .from("sticker_accounts")
+      .insert(account);
+
+    if (error) throw error;
+  }
+}
+
+// ========================================
 // OPEN OVERLAY
+// ========================================
+
 function openOverlay(type) {
 
+  activeOverlay = type;
   authStatus.textContent = "";
 
   if (type === "pay") {
@@ -222,11 +326,7 @@ function openOverlay(type) {
     if (currentUser) {
 
       description.textContent =
-        "Signed in as " +
-        (currentUser.user_metadata?.full_name ||
-         currentUser.user_metadata?.name ||
-         currentUser.email ||
-         "Discord user");
+        "Signed in as " + getDiscordUsername(currentUser);
 
       authButton.textContent = "Sign Out";
 
@@ -247,12 +347,19 @@ function openOverlay(type) {
   overlay.classList.add("open");
 }
 
+// ========================================
 // CLOSE OVERLAY
+// ========================================
+
 function closeOverlay() {
   overlay.classList.remove("open");
+  activeOverlay = null;
 }
 
+// ========================================
 // DISCORD AUTHENTICATION
+// ========================================
+
 authButton.onclick = async () => {
 
   if (!client) {
@@ -268,6 +375,7 @@ authButton.onclick = async () => {
     if (currentUser) {
 
       const { error } = await client.auth.signOut();
+
       if (error) throw error;
 
       currentUser = null;
@@ -275,59 +383,156 @@ authButton.onclick = async () => {
 
     } else {
 
-      const { error } = await client.auth.signInWithOAuth({
-        provider: "discord",
-        options: {
-          redirectTo:
-            window.location.origin +
-            window.location.pathname
-        }
-      });
+      const { error } =
+        await client.auth.signInWithOAuth({
+          provider: "discord",
+          options: {
+            redirectTo:
+              window.location.origin +
+              window.location.pathname,
+            scopes: "identify"
+          }
+        });
 
       if (error) throw error;
     }
 
   } catch (error) {
+
     authStatus.textContent = error.message;
+    console.error("Discord authentication error:", error);
+
   } finally {
+
     authButton.disabled = false;
+
   }
 };
 
-// RESTORE USER SESSION
-if (client) {
+// ========================================
+// HANDLE AUTHENTICATED USER
+// ========================================
 
-  client.auth.getUser().then(({ data, error }) => {
-    if (!error) currentUser = data.user || null;
-  });
+let lastSyncedUserId = null;
+let syncingUserId = null;
 
-  client.auth.onAuthStateChange((_event, session) => {
-    currentUser = session?.user || null;
+async function handleAuthenticatedUser(user) {
 
-    if (
-      overlay.classList.contains("open") &&
-      title.textContent === "SIGN IN"
-    ) {
+  currentUser = user;
+
+  if (!user) {
+    lastSyncedUserId = null;
+    syncingUserId = null;
+
+    if (activeOverlay === "signin") {
       openOverlay("signin");
     }
-  });
+
+    return;
+  }
+
+  if (activeOverlay === "signin") {
+    openOverlay("signin");
+  }
+
+  // Avoid duplicate writes from simultaneous auth events.
+  if (
+    lastSyncedUserId === user.id ||
+    syncingUserId === user.id
+  ) {
+    return;
+  }
+
+  syncingUserId = user.id;
+
+  try {
+
+    await syncStickerAccount(user);
+
+    if (currentUser?.id === user.id) {
+      lastSyncedUserId = user.id;
+    }
+
+    console.log(
+      "Sticker Mania account synchronized:",
+      user.id
+    );
+
+  } catch (error) {
+
+    console.error(
+      "Sticker Mania account sync error:",
+      error
+    );
+
+    if (
+      currentUser?.id === user.id &&
+      activeOverlay === "signin"
+    ) {
+      authStatus.textContent =
+        "Signed in, but account sync failed: " +
+        error.message;
+    }
+
+  } finally {
+
+    if (syncingUserId === user.id) {
+      syncingUserId = null;
+    }
+
+  }
 }
 
+// ========================================
+// RESTORE SESSION
+// ========================================
+
+if (client) {
+
+  // Listen for sign-in, sign-out, and restored sessions.
+  client.auth.onAuthStateChange((event, session) => {
+
+    if (
+      event === "INITIAL_SESSION" ||
+      event === "SIGNED_IN" ||
+      event === "SIGNED_OUT" ||
+      event === "USER_UPDATED"
+    ) {
+
+      // Defer database operations until after
+      // Supabase finishes processing the auth event.
+      setTimeout(() => {
+        handleAuthenticatedUser(session?.user || null);
+      }, 0);
+
+    }
+  });
+
+}
+
+// ========================================
 // BUTTON EVENTS
+// ========================================
+
 document.getElementById("pay-button").onclick =
   () => openOverlay("pay");
 
 document.getElementById("signin-button").onclick =
   () => openOverlay("signin");
 
-document.getElementById("close").onclick = closeOverlay;
+document.getElementById("close").onclick =
+  closeOverlay;
 
 overlay.onclick = (event) => {
-  if (event.target === overlay) closeOverlay();
+  if (event.target === overlay) {
+    closeOverlay();
+  }
 };
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") closeOverlay();
+  if (event.key === "Escape") {
+    closeOverlay();
+  }
 });
 
 </script>
