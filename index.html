@@ -54,7 +54,6 @@ body {
   outline: 3px solid white;
 }
 
-/* PAY BUTTON */
 .pay-button {
   left: 77.5%;
   top: 27.5%;
@@ -62,7 +61,6 @@ body {
   height: 23.4%;
 }
 
-/* SIGN IN BUTTON */
 .signin-button {
   left: 78.4%;
   top: 50.4%;
@@ -70,20 +68,6 @@ body {
   height: 13.4%;
 }
 
-/* TEMPORARY TEST BUTTON */
-.test-signin {
-  display: block;
-  margin: 15px auto;
-  background: #d837f2;
-  color: white;
-  border: none;
-  border-radius: 10px;
-  padding: 12px 25px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-/* OVERLAY */
 .overlay {
   display: none;
   position: fixed;
@@ -175,24 +159,20 @@ body {
 
 </div>
 
-<!-- TEMPORARY SIGN-IN TEST -->
-<button class="test-signin" id="test-signin">
-  TEST DISCORD SIGN IN
-</button>
-
-<!-- OVERLAY -->
+<!-- SIGN IN OVERLAY -->
 <div class="overlay" id="overlay">
   <div class="panel">
 
     <button class="close" id="close">×</button>
 
-    <h2 id="overlay-title"></h2>
-    <p id="overlay-description"></p>
+    <h2>SIGN IN</h2>
 
-    <button
-      class="action"
-      id="discord-auth"
-      style="display:none">
+    <p>
+      Sign in with Discord to access your
+      Sticker Mania account.
+    </p>
+
+    <button class="action" id="discord-auth">
       Continue with Discord
     </button>
 
@@ -218,16 +198,18 @@ const client = window.supabase.createClient(
   SUPABASE_KEY
 );
 
+const ACCOUNT_URL = new URL(
+  "account.html",
+  window.location.href
+).href;
+
 let currentUser = null;
-let activeOverlay = null;
 
 // ========================================
 // ELEMENTS
 // ========================================
 
 const overlay = document.getElementById("overlay");
-const title = document.getElementById("overlay-title");
-const description = document.getElementById("overlay-description");
 const authButton = document.getElementById("discord-auth");
 const authStatus = document.getElementById("auth-status");
 
@@ -281,80 +263,50 @@ async function syncStickerAccount(user) {
     updated_at: new Date().toISOString()
   };
 
-  const { data: existing, error: lookupError } =
-    await client
-      .from("sticker_accounts")
-      .select("id")
-      .eq("id", user.id)
-      .maybeSingle();
+  const { error } = await client
+    .from("sticker_accounts")
+    .upsert(account, {
+      onConflict: "id"
+    });
 
-  if (lookupError) throw lookupError;
-
-  if (existing) {
-
-    const { error } = await client
-      .from("sticker_accounts")
-      .update({
-        discord_id: account.discord_id,
-        username: account.username,
-        updated_at: account.updated_at
-      })
-      .eq("id", user.id);
-
-    if (error) throw error;
-
-  } else {
-
-    const { error } = await client
-      .from("sticker_accounts")
-      .insert(account);
-
-    if (error) throw error;
-  }
+  if (error) throw error;
 }
 
 // ========================================
-// OPEN OVERLAY
+// SIGN IN OVERLAY
 // ========================================
 
-function openOverlay(type) {
-
-  activeOverlay = type;
+function openSignIn() {
   authStatus.textContent = "";
-
-  if (type === "pay") {
-
-    title.textContent = "PAY WITH $AWT";
-    description.textContent = "Payment integration pending.";
-    authButton.style.display = "none";
-
-  } else {
-
-    title.textContent = "SIGN IN";
-    authButton.style.display = "inline-block";
-
-    if (currentUser) {
-
-      description.textContent =
-        "Signed in as " + getDiscordUsername(currentUser);
-
-      authButton.textContent = "Sign Out";
-
-    } else {
-
-      description.textContent =
-        "Sign in with your Discord account.";
-
-      authButton.textContent = "Continue with Discord";
-    }
-  }
-
   overlay.classList.add("open");
 }
 
-function closeOverlay() {
+function closeSignIn() {
   overlay.classList.remove("open");
-  activeOverlay = null;
+}
+
+// ========================================
+// GO TO ACCOUNT
+// ========================================
+
+async function goToAccount() {
+
+  if (!currentUser) {
+    openSignIn();
+    return;
+  }
+
+  try {
+    await syncStickerAccount(currentUser);
+  } catch (error) {
+    console.error("Account sync error:", error);
+    authStatus.textContent =
+      "Account sync failed: " + error.message;
+    openSignIn();
+    return;
+  }
+
+  window.location.href = ACCOUNT_URL;
 }
 
 // ========================================
@@ -368,30 +320,16 @@ authButton.onclick = async () => {
 
   try {
 
-    if (currentUser) {
+    const { error } =
+      await client.auth.signInWithOAuth({
+        provider: "discord",
+        options: {
+          redirectTo: ACCOUNT_URL,
+          scopes: "identify"
+        }
+      });
 
-      const { error } = await client.auth.signOut();
-
-      if (error) throw error;
-
-      currentUser = null;
-      openOverlay("signin");
-
-    } else {
-
-      const { error } =
-        await client.auth.signInWithOAuth({
-          provider: "discord",
-          options: {
-            redirectTo:
-              window.location.origin +
-              window.location.pathname,
-            scopes: "identify"
-          }
-        });
-
-      if (error) throw error;
-    }
+    if (error) throw error;
 
   } catch (error) {
 
@@ -406,113 +344,64 @@ authButton.onclick = async () => {
 };
 
 // ========================================
-// RESTORE USER SESSION
+// BUTTON ACTIONS
 // ========================================
 
-let lastSyncedUserId = null;
-let syncingUserId = null;
+document.getElementById("signin-button").onclick =
+  goToAccount;
 
-async function handleAuthenticatedUser(user) {
+document.getElementById("pay-button").onclick =
+  goToAccount;
 
-  currentUser = user;
+// ========================================
+// SESSION RESTORATION
+// ========================================
 
-  if (!user) {
+async function restoreSession() {
 
-    lastSyncedUserId = null;
+  const { data, error } = await client.auth.getUser();
 
-    if (activeOverlay === "signin") {
-      openOverlay("signin");
-    }
-
+  if (error) {
+    console.error("Session error:", error);
     return;
   }
 
-  if (activeOverlay === "signin") {
-    openOverlay("signin");
-  }
-
-  if (
-    lastSyncedUserId === user.id ||
-    syncingUserId === user.id
-  ) {
-    return;
-  }
-
-  syncingUserId = user.id;
-
-  try {
-
-    await syncStickerAccount(user);
-
-    if (currentUser?.id === user.id) {
-      lastSyncedUserId = user.id;
-    }
-
-    console.log(
-      "Sticker Mania account synchronized:",
-      user.id
-    );
-
-  } catch (error) {
-
-    console.error("Account sync error:", error);
-
-    if (activeOverlay === "signin") {
-      authStatus.textContent =
-        "Signed in, but account sync failed: " +
-        error.message;
-    }
-
-  } finally {
-
-    if (syncingUserId === user.id) {
-      syncingUserId = null;
-    }
-
-  }
+  currentUser = data.user || null;
 }
 
 client.auth.onAuthStateChange((event, session) => {
 
-  if (
-    event === "INITIAL_SESSION" ||
-    event === "SIGNED_IN" ||
-    event === "SIGNED_OUT" ||
-    event === "USER_UPDATED"
-  ) {
+  currentUser = session?.user || null;
 
-    setTimeout(() => {
-      handleAuthenticatedUser(session?.user || null);
+  if (event === "SIGNED_IN" && currentUser) {
+    setTimeout(async () => {
+      try {
+        await syncStickerAccount(currentUser);
+      } catch (error) {
+        console.error("Account sync error:", error);
+      }
     }, 0);
-
   }
 });
 
+restoreSession();
+
 // ========================================
-// BUTTON EVENTS
+// CLOSE OVERLAY
 // ========================================
-
-document.getElementById("pay-button").onclick =
-  () => openOverlay("pay");
-
-document.getElementById("signin-button").onclick =
-  () => openOverlay("signin");
-
-document.getElementById("test-signin").onclick =
-  () => openOverlay("signin");
 
 document.getElementById("close").onclick =
-  closeOverlay;
+  closeSignIn;
 
 overlay.onclick = (event) => {
   if (event.target === overlay) {
-    closeOverlay();
+    closeSignIn();
   }
 };
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
-    closeOverlay();
+    closeSignIn();
   }
 });
 
