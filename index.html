@@ -24,7 +24,6 @@ body {
   position: relative;
   width: min(100vw, 700px);
   margin: auto;
-  aspect-ratio: 1;
 }
 
 .machine {
@@ -48,6 +47,7 @@ body {
   cursor: pointer;
   color: transparent;
   font-size: 0;
+  z-index: 2;
 }
 
 .hotspot:focus-visible {
@@ -68,6 +68,19 @@ body {
   top: 50.4%;
   width: 13%;
   height: 13.4%;
+}
+
+/* TEMPORARY TEST BUTTON */
+.test-signin {
+  display: block;
+  margin: 15px auto;
+  background: #d837f2;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 25px;
+  cursor: pointer;
+  font-weight: bold;
 }
 
 /* OVERLAY */
@@ -162,6 +175,11 @@ body {
 
 </div>
 
+<!-- TEMPORARY SIGN-IN TEST -->
+<button class="test-signin" id="test-signin">
+  TEST DISCORD SIGN IN
+</button>
+
 <!-- OVERLAY -->
 <div class="overlay" id="overlay">
   <div class="panel">
@@ -189,21 +207,16 @@ body {
 // SUPABASE CONFIGURATION
 // ========================================
 
-const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
-const SUPABASE_KEY = "YOUR_SUPABASE_PUBLISHABLE_KEY";
+const SUPABASE_URL =
+  "https://jqvnrdjrkdjgjbmqmbbl.supabase.co";
 
-const configured =
-  SUPABASE_URL.startsWith("https://") &&
-  !SUPABASE_URL.includes("YOUR_") &&
-  SUPABASE_KEY.length > 0 &&
-  !SUPABASE_KEY.includes("YOUR_");
+const SUPABASE_KEY =
+  "sb_publishable_jmEahTk4OssD_IrOZq_6iQ_P6QFFJr6";
 
-const client = configured
-  ? window.supabase.createClient(
-      SUPABASE_URL,
-      SUPABASE_KEY
-    )
-  : null;
+const client = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
 
 let currentUser = null;
 let activeOverlay = null;
@@ -258,7 +271,8 @@ function getDiscordId(user) {
 // ========================================
 
 async function syncStickerAccount(user) {
-  if (!client || !user) return;
+
+  if (!user) return;
 
   const account = {
     id: user.id,
@@ -267,7 +281,6 @@ async function syncStickerAccount(user) {
     updated_at: new Date().toISOString()
   };
 
-  // First check whether the account exists.
   const { data: existing, error: lookupError } =
     await client
       .from("sticker_accounts")
@@ -275,10 +288,7 @@ async function syncStickerAccount(user) {
       .eq("id", user.id)
       .maybeSingle();
 
-  if (lookupError) {
-    console.error("Account lookup failed:", lookupError);
-    throw lookupError;
-  }
+  if (lookupError) throw lookupError;
 
   if (existing) {
 
@@ -336,20 +346,11 @@ function openOverlay(type) {
         "Sign in with your Discord account.";
 
       authButton.textContent = "Continue with Discord";
-
-      if (!client) {
-        authStatus.textContent =
-          "Configure Supabase to enable sign-in.";
-      }
     }
   }
 
   overlay.classList.add("open");
 }
-
-// ========================================
-// CLOSE OVERLAY
-// ========================================
 
 function closeOverlay() {
   overlay.classList.remove("open");
@@ -362,13 +363,8 @@ function closeOverlay() {
 
 authButton.onclick = async () => {
 
-  if (!client) {
-    authStatus.textContent =
-      "Supabase configuration required.";
-    return;
-  }
-
   authButton.disabled = true;
+  authStatus.textContent = "";
 
   try {
 
@@ -400,7 +396,7 @@ authButton.onclick = async () => {
   } catch (error) {
 
     authStatus.textContent = error.message;
-    console.error("Discord authentication error:", error);
+    console.error("Discord auth error:", error);
 
   } finally {
 
@@ -410,7 +406,7 @@ authButton.onclick = async () => {
 };
 
 // ========================================
-// HANDLE AUTHENTICATED USER
+// RESTORE USER SESSION
 // ========================================
 
 let lastSyncedUserId = null;
@@ -421,8 +417,8 @@ async function handleAuthenticatedUser(user) {
   currentUser = user;
 
   if (!user) {
+
     lastSyncedUserId = null;
-    syncingUserId = null;
 
     if (activeOverlay === "signin") {
       openOverlay("signin");
@@ -435,7 +431,6 @@ async function handleAuthenticatedUser(user) {
     openOverlay("signin");
   }
 
-  // Avoid duplicate writes from simultaneous auth events.
   if (
     lastSyncedUserId === user.id ||
     syncingUserId === user.id
@@ -460,15 +455,9 @@ async function handleAuthenticatedUser(user) {
 
   } catch (error) {
 
-    console.error(
-      "Sticker Mania account sync error:",
-      error
-    );
+    console.error("Account sync error:", error);
 
-    if (
-      currentUser?.id === user.id &&
-      activeOverlay === "signin"
-    ) {
+    if (activeOverlay === "signin") {
       authStatus.textContent =
         "Signed in, but account sync failed: " +
         error.message;
@@ -483,32 +472,21 @@ async function handleAuthenticatedUser(user) {
   }
 }
 
-// ========================================
-// RESTORE SESSION
-// ========================================
+client.auth.onAuthStateChange((event, session) => {
 
-if (client) {
+  if (
+    event === "INITIAL_SESSION" ||
+    event === "SIGNED_IN" ||
+    event === "SIGNED_OUT" ||
+    event === "USER_UPDATED"
+  ) {
 
-  // Listen for sign-in, sign-out, and restored sessions.
-  client.auth.onAuthStateChange((event, session) => {
+    setTimeout(() => {
+      handleAuthenticatedUser(session?.user || null);
+    }, 0);
 
-    if (
-      event === "INITIAL_SESSION" ||
-      event === "SIGNED_IN" ||
-      event === "SIGNED_OUT" ||
-      event === "USER_UPDATED"
-    ) {
-
-      // Defer database operations until after
-      // Supabase finishes processing the auth event.
-      setTimeout(() => {
-        handleAuthenticatedUser(session?.user || null);
-      }, 0);
-
-    }
-  });
-
-}
+  }
+});
 
 // ========================================
 // BUTTON EVENTS
@@ -518,6 +496,9 @@ document.getElementById("pay-button").onclick =
   () => openOverlay("pay");
 
 document.getElementById("signin-button").onclick =
+  () => openOverlay("signin");
+
+document.getElementById("test-signin").onclick =
   () => openOverlay("signin");
 
 document.getElementById("close").onclick =
