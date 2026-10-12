@@ -7,10 +7,11 @@
 <title>Sticker Mania</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link rel="stylesheet" href="purchase.css">
 
 <style>
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 html, body {
   margin: 0;
@@ -26,6 +27,8 @@ body {
   font-family: Arial, sans-serif;
 }
 
+/* ARCADE */
+
 .arcade-viewport {
   width: 100%;
   min-height: 100vh;
@@ -34,7 +37,6 @@ body {
   align-items: center;
   justify-content: center;
   padding: 12px;
-  overflow-x: hidden;
   background: radial-gradient(
     ellipse at center,
     #24113f 0%,
@@ -47,17 +49,9 @@ body {
   position: relative;
   width: min(100%, 900px, calc(100dvh - 24px));
   aspect-ratio: 1 / 1;
-  flex: 0 1 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   border: 2px solid #543184;
   border-radius: 18px;
   background: #080412;
-  box-shadow:
-    0 0 18px #5c28a455,
-    0 0 55px #35116b44,
-    inset 0 0 22px #52218c33;
   overflow: hidden;
 }
 
@@ -65,13 +59,12 @@ body {
   position: relative;
   width: 100%;
   aspect-ratio: 1 / 1;
-  flex-shrink: 0;
 }
 
 .machine {
+  display: block;
   width: 100%;
   height: 100%;
-  display: block;
   object-fit: contain;
 }
 
@@ -84,18 +77,21 @@ body {
   pointer-events: none;
 }
 
+/* ARCADE BUTTONS */
+
 .hotspot {
   position: absolute;
+  z-index: 2;
   border: 0;
   padding: 0;
   background: transparent;
   cursor: pointer;
   color: transparent;
   font-size: 0;
-  z-index: 2;
 }
 
-.hotspot:focus-visible {
+.hotspot:focus-visible,
+.purchase-hotspot:focus-visible {
   outline: 3px solid white;
 }
 
@@ -113,6 +109,8 @@ body {
   height: 13.4%;
   overflow: hidden;
 }
+
+/* COLLECTION BUTTON */
 
 .collection-button {
   display: none;
@@ -149,12 +147,14 @@ body {
   text-shadow: 0 0 5px #527cff;
 }
 
+/* DISCORD LOGIN MODAL */
+
 .auth-overlay {
   display: none;
   position: fixed;
   inset: 0;
   z-index: 20;
-  background: #05020be8;
+  background: rgba(5, 2, 11, 0.91);
   align-items: center;
   justify-content: center;
   padding: 16px;
@@ -197,7 +197,7 @@ body {
 }
 
 .auth-action:disabled {
-  opacity: .5;
+  opacity: 0.5;
 }
 
 #auth-status {
@@ -205,8 +205,98 @@ body {
   overflow-wrap: anywhere;
 }
 
+/* PURCHASE MODAL */
+
+.purchase-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background: rgba(5, 2, 11, 0.85);
+}
+
+.purchase-overlay[hidden] {
+  display: none;
+}
+
+.purchase-modal {
+  position: relative;
+  width: min(94vw, 760px, 132dvh);
+  max-height: 88dvh;
+  border: 2px solid #bd3aff;
+  border-radius: 14px;
+  background: #080412;
+  overflow: hidden;
+  box-shadow: 0 0 35px #9b28e888;
+}
+
+.purchase-art {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* INVISIBLE BUTTONS OVER zcety.png */
+
+.purchase-hotspot {
+  position: absolute;
+  z-index: 2;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.purchase-common {
+  left: 13%;
+  top: 65%;
+  width: 21%;
+  height: 11%;
+}
+
+.purchase-rare {
+  left: 40%;
+  top: 65%;
+  width: 20%;
+  height: 11%;
+}
+
+.purchase-legendary {
+  left: 67%;
+  top: 65%;
+  width: 20%;
+  height: 11%;
+}
+
+.purchase-close {
+  right: 8.3%;
+  top: 8.5%;
+  width: 5%;
+  height: 7%;
+}
+
+.purchase-status {
+  position: absolute;
+  left: 12%;
+  bottom: 2%;
+  width: 76%;
+  margin: 0;
+  color: white;
+  font-size: clamp(9px, 1.4vw, 13px);
+  text-align: center;
+  text-shadow: 0 0 8px #bd3aff;
+  pointer-events: none;
+}
+
+/* MOBILE */
+
 @media (max-width: 600px) {
-  .arcade-viewport { padding: 4px; }
+  .arcade-viewport {
+    padding: 4px;
+  }
 
   .arcade-container {
     width: min(100%, calc(100dvh - 8px));
@@ -228,11 +318,27 @@ body {
   .auth-panel {
     padding: 25px 18px;
   }
+
+  .purchase-overlay {
+    padding: 5px;
+  }
+
+  .purchase-modal {
+    width: min(98vw, 132dvh);
+    border-width: 1px;
+    border-radius: 7px;
+  }
+
+  .purchase-status {
+    font-size: 8px;
+  }
 }
 </style>
 </head>
 
 <body>
+
+<!-- ARCADE -->
 
 <main class="arcade-viewport">
   <div class="arcade-container">
@@ -266,6 +372,7 @@ body {
             id="collection-avatar"
             alt="Discord Profile"
           >
+
           <span class="collection-label">
             MY COLLECTION
           </span>
@@ -277,10 +384,61 @@ body {
   </div>
 </main>
 
-<!-- PURCHASE MODAL IS LOADED HERE -->
-<div id="purchase-root"></div>
+<!-- PURCHASE MODAL -->
 
-<!-- DISCORD SIGN IN -->
+<div
+  class="purchase-overlay"
+  id="purchase-overlay"
+  hidden
+>
+  <div
+    class="purchase-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Sticker Mania Purchase"
+  >
+
+    <img
+      class="purchase-art"
+      src="assets/zcety.png"
+      alt="Sticker Mania Purchase Options"
+    >
+
+    <button
+      class="purchase-hotspot purchase-common"
+      data-tier="common"
+      aria-label="Buy Common for $0.50">
+    </button>
+
+    <button
+      class="purchase-hotspot purchase-rare"
+      data-tier="rare"
+      aria-label="Buy Rare for $1.00">
+    </button>
+
+    <button
+      class="purchase-hotspot purchase-legendary"
+      data-tier="legendary"
+      aria-label="Buy Legendary for $3.00">
+    </button>
+
+    <button
+      class="purchase-hotspot purchase-close"
+      id="purchase-close"
+      aria-label="Close purchase">
+    </button>
+
+    <p
+      class="purchase-status"
+      id="purchase-status"
+      role="status">
+    </p>
+
+  </div>
+</div>
+
+<!-- DISCORD LOGIN MODAL -->
+
 <div class="auth-overlay" id="auth-overlay">
   <div class="auth-panel">
 
@@ -308,6 +466,8 @@ body {
 </div>
 
 <script>
+/* SUPABASE CLIENT */
+
 const SUPABASE_URL =
   "https://jqvnrdjrkdjgjbmqmbbl.supabase.co";
 
@@ -320,9 +480,11 @@ const client = window.supabase.createClient(
 );
 
 const ACCOUNT_URL =
-  new URL("account.html", location.href).href;
+  new URL("account.html", window.location.href).href;
 
 let currentUser = null;
+
+/* DISCORD ACCOUNT */
 
 const authOverlay =
   document.getElementById("auth-overlay");
@@ -369,13 +531,20 @@ function getDiscordId(user) {
 function updateAccountButton() {
   const signedIn = !!currentUser;
 
-  signinButton.classList.toggle("signed-in", signedIn);
-  signinButton.setAttribute(
-    "aria-label",
-    signedIn ? "View My Collection" : "Sign in with Discord"
+  signinButton.classList.toggle(
+    "signed-in",
+    signedIn
   );
 
-  const avatar = currentUser?.user_metadata?.avatar_url;
+  signinButton.setAttribute(
+    "aria-label",
+    signedIn
+      ? "View My Collection"
+      : "Sign in with Discord"
+  );
+
+  const avatar =
+    currentUser?.user_metadata?.avatar_url;
 
   if (signedIn && avatar) {
     collectionAvatar.src = avatar;
@@ -420,7 +589,7 @@ async function goToAccount() {
 
   try {
     await syncStickerAccount(currentUser);
-    location.href = ACCOUNT_URL;
+    window.location.href = ACCOUNT_URL;
   } catch (error) {
     console.error(error);
     openSignIn();
@@ -434,13 +603,14 @@ authButton.onclick = async () => {
   authStatus.textContent = "";
 
   try {
-    const { error } = await client.auth.signInWithOAuth({
-      provider: "discord",
-      options: {
-        redirectTo: ACCOUNT_URL,
-        scopes: "identify"
-      }
-    });
+    const { error } =
+      await client.auth.signInWithOAuth({
+        provider: "discord",
+        options: {
+          redirectTo: ACCOUNT_URL,
+          scopes: "identify"
+        }
+      });
 
     if (error) throw error;
   } catch (error) {
@@ -452,12 +622,9 @@ authButton.onclick = async () => {
 
 signinButton.onclick = goToAccount;
 
-document.getElementById("pay-button").onclick = () => {
-  window.StickerPurchase.open();
-};
-
 async function restoreSession() {
-  const { data, error } = await client.auth.getUser();
+  const { data, error } =
+    await client.auth.getUser();
 
   if (error) {
     console.error(error);
@@ -487,14 +654,116 @@ document.getElementById("auth-close").onclick =
   closeSignIn;
 
 authOverlay.onclick = event => {
-  if (event.target === authOverlay) closeSignIn();
+  if (event.target === authOverlay) {
+    closeSignIn();
+  }
 };
 
+/* PURCHASE MODAL CONTROLS */
+
+const purchaseOverlay =
+  document.getElementById("purchase-overlay");
+
+const purchaseStatus =
+  document.getElementById("purchase-status");
+
+const purchaseClose =
+  document.getElementById("purchase-close");
+
+const payButton =
+  document.getElementById("pay-button");
+
+function openPurchase() {
+  purchaseStatus.textContent = "";
+  purchaseOverlay.hidden = false;
+  purchaseClose.focus();
+}
+
+function closePurchase() {
+  purchaseOverlay.hidden = true;
+  purchaseStatus.textContent = "";
+  payButton.focus();
+}
+
+payButton.addEventListener("click", openPurchase);
+
+purchaseClose.addEventListener(
+  "click",
+  closePurchase
+);
+
+purchaseOverlay.addEventListener("click", event => {
+  if (event.target === purchaseOverlay) {
+    closePurchase();
+  }
+});
+
+document.querySelectorAll("[data-tier]").forEach(button => {
+  button.addEventListener("click", async () => {
+    const tier = button.dataset.tier;
+
+    if (!currentUser) {
+      closePurchase();
+      openSignIn();
+      return;
+    }
+
+    purchaseStatus.textContent =
+      "Preparing " + tier.toUpperCase() + " purchase...";
+
+    button.disabled = true;
+
+    try {
+      const { data, error } =
+        await client.functions.invoke(
+          "purchase-sticker",
+          {
+            body: { tier }
+          }
+        );
+
+      if (error) throw error;
+
+      if (!data || !data.paymentUrl) {
+        throw new Error(
+          "Payment instructions were not returned."
+        );
+      }
+
+      purchaseStatus.textContent =
+        "Payment request ready.";
+
+      // Open the verified payment request returned by Supabase.
+      // Never construct the payment amount on the frontend.
+      window.open(
+        data.paymentUrl,
+        "_blank",
+        "noopener,noreferrer"
+      );
+
+    } catch (error) {
+      console.error(error);
+
+      purchaseStatus.textContent =
+        "Purchase unavailable: " + error.message;
+    } finally {
+      button.disabled = false;
+    }
+  });
+});
+
+/* ESCAPE KEY */
+
 document.addEventListener("keydown", event => {
-  if (event.key === "Escape") closeSignIn();
+  if (event.key !== "Escape") return;
+
+  if (!purchaseOverlay.hidden) {
+    closePurchase();
+  } else {
+    closeSignIn();
+  }
 });
 </script>
 
-<script src="purchase.js"></script>
 </body>
 </html>
