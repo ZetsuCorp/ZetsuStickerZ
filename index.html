@@ -75,14 +75,12 @@ body {
   pointer-events: none;
 }
 
-/* SMALL PRICE LABEL */
+/* AWT PRICE LABELS */
 
-.awt-price-tag {
+.awt-price-tag,
+.purchase-price-tag {
   position: absolute;
   z-index: 3;
-  top: 8px;
-  right: 8px;
-  width: auto;
   padding: 3px 6px;
   border: 1px solid #943bce;
   border-radius: 4px;
@@ -93,6 +91,16 @@ body {
   line-height: 1.2;
   white-space: nowrap;
   pointer-events: none;
+}
+
+.awt-price-tag {
+  top: 8px;
+  right: 8px;
+}
+
+.purchase-price-tag {
+  top: 8px;
+  left: 8px;
 }
 
 /* CLICKABLE AREAS */
@@ -251,23 +259,6 @@ body {
   display: block;
   width: 100%;
   height: auto;
-}
-
-/* SMALL PURCHASE PRICE LABEL */
-
-.purchase-price-tag {
-  position: absolute;
-  z-index: 3;
-  top: 8px;
-  left: 8px;
-  padding: 3px 6px;
-  border: 1px solid #943bce;
-  border-radius: 4px;
-  background: rgba(9, 5, 26, 0.87);
-  color: #64ffcb;
-  font-size: 11px;
-  font-weight: bold;
-  pointer-events: none;
 }
 
 .purchase-hotspot {
@@ -488,7 +479,6 @@ body {
         class="awt-price-tag"
         id="awt-price-main"
         title="AWT / USD">
-        LOADING...
       </span>
 
       <div
@@ -548,7 +538,6 @@ body {
       class="purchase-price-tag"
       id="awt-price-purchase"
       title="AWT / USD">
-      LOADING...
     </span>
 
     <button
@@ -704,10 +693,9 @@ let currentUser = null;
 let activePurchase = null;
 
 let currentAWTPrice = null;
-let pricePromise = null;
+let priceRequest = null;
 
 let paymentTimer = null;
-
 let purchasing = false;
 let checkingPayment = false;
 
@@ -745,7 +733,7 @@ const tierButtons = [
   ...document.querySelectorAll("[data-tier]")
 ];
 
-/* ERROR HANDLING */
+/* FUNCTION ERROR DETAILS */
 
 async function functionError(error) {
   let message = error?.message || "Unknown error";
@@ -776,120 +764,82 @@ async function functionError(error) {
   return message;
 }
 
-/* AWT PUBLISHED PRICE = LIVE PRICE */
+/* PUBLISHED PRICE = LIVE PRICE */
 
 function formatPrice(price) {
-  return "$" + new Intl.NumberFormat(
-    "en-US",
-    {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 12
-    }
-  ).format(price);
+  return "$" + new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 12
+  }).format(price);
 }
 
 function displayPrice(price) {
-  const text = formatPrice(price);
+  const formatted = formatPrice(price);
 
-  priceMain.textContent = text;
-  pricePurchase.textContent = text;
+  priceMain.textContent = formatted;
+  pricePurchase.textContent = formatted;
 }
 
 async function refreshAWTPrice() {
-  if (pricePromise) {
-    return pricePromise;
+  if (priceRequest) {
+    return priceRequest;
   }
 
-  pricePromise = (async () => {
-    try {
-      /*
-        The awt-price function reads
-        the published AWT price.
-
-        Published price = live price.
-
-        No localStorage.
-        No hardcoded token price.
-      */
-
-      const { data, error } =
-        await client.functions.invoke(
-          "awt-price",
-          {
-            method: "POST",
-            body: {
-              mint: AWT_MINT
-            }
+  priceRequest = (async () => {
+    const { data, error } =
+      await client.functions.invoke(
+        "awt-price",
+        {
+          method: "POST",
+          body: {
+            mint: AWT_MINT
           }
-        );
-
-      if (error) {
-        throw new Error(
-          await functionError(error)
-        );
-      }
-
-      if (!data || data.success !== true) {
-        throw new Error(
-          data?.error ||
-          "AWT price request failed"
-        );
-      }
-
-      if (data.mint !== AWT_MINT) {
-        throw new Error(
-          "Incorrect AWT mint"
-        );
-      }
-
-      const price = Number(data.priceUsd);
-
-      if (
-        !Number.isFinite(price) ||
-        price <= 0
-      ) {
-        throw new Error(
-          "Invalid AWT price response"
-        );
-      }
-
-      currentAWTPrice = price;
-
-      displayPrice(price);
-
-      return price;
-
-    } catch (error) {
-      console.error(
-        "[AWT PRICE]",
-        error
+        }
       );
 
-      /*
-        A failed request does not mean
-        the coin has no price.
-
-        Report a loading error only if
-        no price has been received yet.
-
-        Nothing is saved in localStorage.
-      */
-
-      if (currentAWTPrice === null) {
-        priceMain.textContent = "PRICE ERROR";
-        pricePurchase.textContent = "PRICE ERROR";
-      }
-
-      return null;
+    if (error) {
+      throw new Error(
+        await functionError(error)
+      );
     }
+
+    if (!data || data.success !== true) {
+      throw new Error(
+        data?.error || "Invalid price response"
+      );
+    }
+
+    if (data.mint !== AWT_MINT) {
+      throw new Error("Incorrect AWT mint");
+    }
+
+    const price = Number(data.priceUsd);
+
+    if (
+      !Number.isFinite(price) ||
+      price <= 0
+    ) {
+      throw new Error("Invalid AWT price");
+    }
+
+    currentAWTPrice = price;
+
+    displayPrice(currentAWTPrice);
+
+    return currentAWTPrice;
   })();
 
   try {
-    return await pricePromise;
-
+    return await priceRequest;
   } finally {
-    pricePromise = null;
+    priceRequest = null;
   }
+}
+
+function updateAWTPrice() {
+  void refreshAWTPrice().catch(error => {
+    console.error("[AWT PRICE]", error);
+  });
 }
 
 /* DISCORD USER INFORMATION */
@@ -934,7 +884,6 @@ function updateLoginDisplay() {
   if (signedIn && avatar) {
     collectionAvatar.src = avatar;
     collectionAvatar.style.display = "block";
-
   } else {
     collectionAvatar.removeAttribute("src");
     collectionAvatar.style.display = "none";
@@ -961,10 +910,7 @@ async function syncAccount(user) {
     );
 
   if (error) {
-    console.error(
-      "[ACCOUNT SYNC]",
-      error.message
-    );
+    console.error("[ACCOUNT SYNC]", error.message);
   }
 }
 
@@ -996,11 +942,8 @@ authButton.onclick = async () => {
     if (error) {
       throw error;
     }
-
   } catch (error) {
-    authStatus.textContent =
-      error.message;
-
+    authStatus.textContent = error.message;
   } finally {
     authButton.disabled = false;
   }
@@ -1029,10 +972,7 @@ client.auth.onAuthStateChange(
 
     updateLoginDisplay();
 
-    if (
-      event === "SIGNED_IN" &&
-      currentUser
-    ) {
+    if (event === "SIGNED_IN" && currentUser) {
       const user = currentUser;
 
       setTimeout(() => {
@@ -1047,10 +987,7 @@ async function restoreUser() {
     await client.auth.getUser();
 
   if (error) {
-    console.error(
-      "[SESSION]",
-      error.message
-    );
+    console.error("[SESSION]", error.message);
   }
 
   currentUser = data?.user || null;
@@ -1060,7 +997,7 @@ async function restoreUser() {
 
 void restoreUser();
 
-/* AUTHENTICATED SUPABASE FUNCTION */
+/* AUTHENTICATED EDGE FUNCTIONS */
 
 async function invoke(name, body) {
   const {
@@ -1072,13 +1009,10 @@ async function invoke(name, body) {
     throw sessionError;
   }
 
-  const token =
-    sessionData.session?.access_token;
+  const token = sessionData.session?.access_token;
 
   if (!token) {
-    throw new Error(
-      "Sign in with Discord"
-    );
+    throw new Error("Sign in with Discord");
   }
 
   const { data, error } =
@@ -1101,22 +1035,14 @@ async function invoke(name, body) {
 
   if (!data || data.error) {
     throw new Error(
-      data?.error ||
-      "Invalid function response"
+      data?.error || "Invalid function response"
     );
   }
 
   return data;
 }
 
-/* PENDING PURCHASE STORAGE */
-
-/*
-  This storage is ONLY for an unfinished
-  payment transaction.
-
-  It does not store the AWT price.
-*/
+/* PENDING TRANSACTION */
 
 function pendingKey() {
   return (
@@ -1131,22 +1057,16 @@ function savePending(purchase) {
       pendingKey(),
       JSON.stringify(purchase)
     );
-
   } catch (error) {
-    console.error(
-      "[SAVE PENDING]",
-      error
-    );
+    console.error("[PENDING PURCHASE]", error);
   }
 }
 
 function readPending() {
   try {
-    const raw =
-      localStorage.getItem(pendingKey());
+    const raw = localStorage.getItem(pendingKey());
 
     return raw ? JSON.parse(raw) : null;
-
   } catch {
     return null;
   }
@@ -1158,7 +1078,7 @@ function clearPending() {
   } catch {}
 }
 
-/* VALIDATE PURCHASE RESPONSE */
+/* PURCHASE VALIDATION */
 
 function validatePurchase(data, tier) {
   if (
@@ -1167,34 +1087,26 @@ function validatePurchase(data, tier) {
     !data.reference ||
     !data.paymentUrl
   ) {
-    throw new Error(
-      "Incomplete purchase response"
-    );
+    throw new Error("Incomplete purchase response");
   }
 
   if (
     Number(data.priceUsd) !==
     CAPSULE_PRICES[tier]
   ) {
-    throw new Error(
-      "Incorrect capsule price"
-    );
+    throw new Error("Incorrect capsule price");
   }
 
-  const amount =
-    Number(data.awtAmount);
+  const amount = Number(data.awtAmount);
 
   if (
     !Number.isFinite(amount) ||
     amount <= 0
   ) {
-    throw new Error(
-      "Invalid AWT payment amount"
-    );
+    throw new Error("Invalid AWT payment amount");
   }
 
-  const url =
-    new URL(data.paymentUrl);
+  const url = new URL(data.paymentUrl);
 
   if (
     url.protocol !== "solana:" ||
@@ -1203,18 +1115,13 @@ function validatePurchase(data, tier) {
     url.searchParams.get("reference") !== data.reference ||
     Number(url.searchParams.get("amount")) !== amount
   ) {
-    throw new Error(
-      "Invalid Solana Pay payment request"
-    );
+    throw new Error("Invalid Solana Pay payment request");
   }
 }
 
-/* PAYMENT STATUS */
+/* PAYMENT DISPLAY */
 
-function paymentStatus(
-  message,
-  error = false
-) {
+function paymentStatus(message, error = false) {
   paymentMessage.textContent = message;
 
   paymentMessage.classList.toggle(
@@ -1222,8 +1129,6 @@ function paymentStatus(
     error
   );
 }
-
-/* PAYMENT POLLING */
 
 function stopPolling() {
   if (paymentTimer !== null) {
@@ -1246,16 +1151,13 @@ function startPolling() {
   }, PAYMENT_CHECK_MS);
 }
 
-/* SHOW SOLANA PAYMENT */
-
 async function showPayment(purchase) {
   activePurchase = purchase;
 
   paymentPanel.hidden = false;
 
   paymentTitle.textContent =
-    purchase.tier.toUpperCase() +
-    " CAPSULE";
+    purchase.tier.toUpperCase() + " CAPSULE";
 
   paymentUsd.textContent =
     "$" +
@@ -1265,10 +1167,9 @@ async function showPayment(purchase) {
   paymentAwt.textContent =
     purchase.awtAmount + " $AWT";
 
-  paymentWallet.href =
-    purchase.paymentUrl;
-
+  paymentWallet.href = purchase.paymentUrl;
   paymentWallet.hidden = false;
+
   paymentCopy.hidden = false;
   paymentCheck.hidden = false;
   paymentQr.hidden = false;
@@ -1281,9 +1182,7 @@ async function showPayment(purchase) {
 
   try {
     if (!window.QRCode) {
-      throw new Error(
-        "QR code library unavailable"
-      );
+      throw new Error("QR code library unavailable");
     }
 
     await QRCode.toCanvas(
@@ -1294,7 +1193,6 @@ async function showPayment(purchase) {
         margin: 2
       }
     );
-
   } catch (error) {
     paymentQr.hidden = true;
 
@@ -1310,18 +1208,14 @@ async function showPayment(purchase) {
 /* VERIFY PAYMENT */
 
 async function checkPayment() {
-  if (
-    !activePurchase ||
-    checkingPayment
-  ) {
+  if (!activePurchase || checkingPayment) {
     return;
   }
 
   checkingPayment = true;
   paymentCheck.disabled = true;
 
-  const purchaseId =
-    activePurchase.purchaseId;
+  const purchaseId = activePurchase.purchaseId;
 
   try {
     const result = await invoke(
@@ -1343,18 +1237,14 @@ async function checkPayment() {
       stopPolling();
       clearPending();
 
-      const reward =
-        result.capsule;
+      const reward = result.capsule;
 
-      paymentTitle.textContent =
-        "CAPSULE OPENED";
+      paymentTitle.textContent = "CAPSULE OPENED";
 
       paymentAwt.textContent =
-        reward?.reward_name ||
-        "Reward selected";
+        reward?.reward_name || "Reward selected";
 
-      const rewardType =
-        reward?.reward_type || "";
+      const rewardType = reward?.reward_type || "";
 
       let message =
         "REWARD: " +
@@ -1392,20 +1282,15 @@ async function checkPayment() {
     }
 
     paymentStatus(
-      "Purchase status: " +
-      result.status,
+      "Purchase status: " + result.status,
       true
     );
 
   } catch (error) {
-    console.error(
-      "[VERIFY]",
-      error
-    );
+    console.error("[VERIFY]", error);
 
     paymentStatus(
-      "Verification error: " +
-      error.message,
+      "Verification error: " + error.message,
       true
     );
 
@@ -1415,7 +1300,7 @@ async function checkPayment() {
   }
 }
 
-/* CREATE CAPSULE PURCHASE */
+/* CREATE PURCHASE */
 
 async function buyCapsule(tier) {
   if (purchasing) {
@@ -1428,9 +1313,6 @@ async function buyCapsule(tier) {
       tier
     )
   ) {
-    purchaseStatus.textContent =
-      "Invalid capsule selection.";
-
     return;
   }
 
@@ -1446,18 +1328,9 @@ async function buyCapsule(tier) {
     button.disabled = true;
   });
 
-  purchaseStatus.textContent =
-    "CREATING PURCHASE...";
+  purchaseStatus.textContent = "CREATING PURCHASE...";
 
   try {
-    /*
-      The server creates the payment
-      using its AWT price function.
-
-      This button does not require
-      a separate browser price request.
-    */
-
     const result = await invoke(
       "purchase-capsule",
       { tier }
@@ -1467,7 +1340,7 @@ async function buyCapsule(tier) {
 
     const purchase = {
       purchaseId: result.purchaseId,
-      tier: tier,
+      tier,
       priceUsd: result.priceUsd,
       awtUsd: result.awtUsd,
       awtAmount: result.awtAmount,
@@ -1476,12 +1349,6 @@ async function buyCapsule(tier) {
       expiresAt: result.expiresAt
     };
 
-    /*
-      Replace the previously selected
-      pending purchase only after the
-      new purchase was created.
-    */
-
     savePending(purchase);
 
     purchaseStatus.textContent = "";
@@ -1489,14 +1356,10 @@ async function buyCapsule(tier) {
     await showPayment(purchase);
 
   } catch (error) {
-    console.error(
-      "[PURCHASE]",
-      error
-    );
+    console.error("[PURCHASE]", error);
 
     purchaseStatus.textContent =
-      "PURCHASE ERROR: " +
-      error.message;
+      "PURCHASE ERROR: " + error.message;
 
   } finally {
     purchasing = false;
@@ -1507,56 +1370,19 @@ async function buyCapsule(tier) {
   }
 }
 
-/* OPEN PURCHASE MENU */
+/* PURCHASE MENU */
 
-async function openPurchase() {
+function openPurchase() {
   purchaseOverlay.hidden = false;
   paymentPanel.hidden = true;
 
   purchaseStatus.textContent = "";
 
-  /*
-    Read the live/published AWT price
-    whenever the menu opens.
-  */
+  stopPolling();
+  activePurchase = null;
 
-  void refreshAWTPrice();
-
-  /*
-    Resume an unfinished payment if one
-    is recorded for this account.
-  */
-
-  const pending =
-    currentUser ? readPending() : null;
-
-  if (
-    pending?.purchaseId &&
-    pending?.paymentUrl
-  ) {
-    try {
-      validatePurchase(
-        pending,
-        pending.tier
-      );
-
-      await showPayment(pending);
-      await checkPayment();
-
-    } catch (error) {
-      clearPending();
-
-      activePurchase = null;
-      paymentPanel.hidden = true;
-
-      purchaseStatus.textContent =
-        "PENDING PURCHASE: " +
-        error.message;
-    }
-  }
+  updateAWTPrice();
 }
-
-/* CLOSE PURCHASE MENU */
 
 function closePurchase() {
   stopPolling();
@@ -1569,13 +1395,7 @@ function closePurchase() {
   payButton.focus();
 }
 
-/* VENDING MACHINE BUTTON */
-
-payButton.onclick = () => {
-  void openPurchase();
-};
-
-/* CLOSE MENU BUTTON */
+payButton.onclick = openPurchase;
 
 purchaseClose.onclick = closePurchase;
 
@@ -1589,22 +1409,17 @@ purchaseOverlay.onclick = event => {
 
 tierButtons.forEach(button => {
   button.onclick = () => {
-    void buyCapsule(
-      button.dataset.tier
-    );
+    void buyCapsule(button.dataset.tier);
   };
 });
 
-/* OPEN WALLET */
+/* WALLET */
 
-paymentWallet.addEventListener(
-  "click",
-  event => {
-    if (!activePurchase) {
-      event.preventDefault();
-    }
+paymentWallet.addEventListener("click", event => {
+  if (!activePurchase) {
+    event.preventDefault();
   }
-);
+});
 
 /* COPY PAYMENT LINK */
 
@@ -1618,14 +1433,11 @@ paymentCopy.onclick = async () => {
       activePurchase.paymentUrl
     );
 
-    paymentStatus(
-      "Solana Pay link copied."
-    );
+    paymentStatus("Solana Pay link copied.");
 
   } catch (error) {
     paymentStatus(
-      "Copy failed: " +
-      error.message,
+      "Copy failed: " + error.message,
       true
     );
   }
@@ -1645,64 +1457,41 @@ paymentBack.onclick = () => {
   paymentPanel.hidden = true;
   purchaseStatus.textContent = "";
 
-  /*
-    Keep the unfinished payment record
-    available for recovery, but allow
-    another capsule to be selected.
-  */
-
-  if (!readPending()) {
-    activePurchase = null;
-  }
+  activePurchase = null;
 };
 
 /* ESCAPE KEY */
 
-document.addEventListener(
-  "keydown",
-  event => {
-    if (event.key !== "Escape") {
-      return;
-    }
-
-    if (!purchaseOverlay.hidden) {
-      closePurchase();
-
-    } else {
-      closeAuth();
-    }
+document.addEventListener("keydown", event => {
+  if (event.key !== "Escape") {
+    return;
   }
-);
+
+  if (!purchaseOverlay.hidden) {
+    closePurchase();
+  } else {
+    closeAuth();
+  }
+});
 
 /* START */
 
-/*
-  Fetch the published/live price
-  directly from awt-price on load.
+updateAWTPrice();
 
-  No browser price storage.
-*/
-
-void refreshAWTPrice();
-
-/* REFRESH PRICE */
-
-setInterval(() => {
-  void refreshAWTPrice();
-}, PRICE_REFRESH_MS);
-
-/* REFRESH WHEN USER RETURNS */
+setInterval(
+  updateAWTPrice,
+  PRICE_REFRESH_MS
+);
 
 document.addEventListener(
   "visibilitychange",
   () => {
     if (!document.hidden) {
-      void refreshAWTPrice();
+      updateAWTPrice();
     }
   }
 );
 
 </script>
-
 </body>
 </html>
