@@ -54,6 +54,7 @@ body {
   outline: 3px solid white;
 }
 
+/* PAY BUTTON */
 .pay-button {
   left: 77.5%;
   top: 27.5%;
@@ -61,13 +62,53 @@ body {
   height: 23.4%;
 }
 
+/* SIGN IN / COLLECTION BUTTON */
 .signin-button {
   left: 78.4%;
   top: 50.4%;
   width: 13%;
   height: 13.4%;
+  padding: 0;
+  overflow: hidden;
 }
 
+/* SIGNED-IN BUTTON CONTENT */
+.collection-button {
+  display: none;
+  width: 100%;
+  height: 100%;
+  background: #090c32;
+  border: 2px solid #527cff;
+  border-radius: 10px;
+  box-shadow: 0 0 10px #315dff;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 5px;
+  padding: 5px;
+}
+
+.signin-button.signed-in .collection-button {
+  display: flex;
+}
+
+.collection-avatar {
+  width: 48%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #29235d;
+}
+
+.collection-label {
+  color: white;
+  font-size: clamp(7px, 1.3vw, 10px);
+  font-weight: bold;
+  text-align: center;
+  text-shadow: 0 0 5px #527cff;
+}
+
+/* SIGN IN OVERLAY */
 .overlay {
   display: none;
   position: fixed;
@@ -150,11 +191,23 @@ body {
     aria-label="Pay with AWT">
   </button>
 
-  <!-- BUTTON 2: SIGN IN -->
+  <!-- BUTTON 2: SIGN IN / COLLECTION -->
   <button
     class="hotspot signin-button"
     id="signin-button"
-    aria-label="Sign in">
+    aria-label="Sign in with Discord">
+
+    <span class="collection-button" id="collection-button">
+      <img
+        class="collection-avatar"
+        id="collection-avatar"
+        alt="Discord Profile"
+      >
+      <span class="collection-label">
+        MY COLLECTION
+      </span>
+    </span>
+
   </button>
 
 </div>
@@ -213,6 +266,9 @@ const overlay = document.getElementById("overlay");
 const authButton = document.getElementById("discord-auth");
 const authStatus = document.getElementById("auth-status");
 
+const signinButton = document.getElementById("signin-button");
+const collectionAvatar = document.getElementById("collection-avatar");
+
 // ========================================
 // DISCORD ACCOUNT INFORMATION
 // ========================================
@@ -246,6 +302,48 @@ function getDiscordId(user) {
     user.user_metadata?.sub ||
     null
   );
+}
+
+function getDiscordAvatar(user) {
+  if (!user) return "";
+
+  return user.user_metadata?.avatar_url || "";
+}
+
+// ========================================
+// UPDATE SIGN IN / COLLECTION BUTTON
+// ========================================
+
+function updateAccountButton() {
+
+  if (currentUser) {
+
+    signinButton.classList.add("signed-in");
+    signinButton.setAttribute(
+      "aria-label",
+      "View My Collection"
+    );
+
+    const avatarUrl = getDiscordAvatar(currentUser);
+
+    if (avatarUrl) {
+      collectionAvatar.src = avatarUrl;
+      collectionAvatar.style.display = "block";
+    } else {
+      collectionAvatar.removeAttribute("src");
+      collectionAvatar.style.display = "none";
+    }
+
+  } else {
+
+    signinButton.classList.remove("signed-in");
+    signinButton.setAttribute(
+      "aria-label",
+      "Sign in with Discord"
+    );
+
+    collectionAvatar.removeAttribute("src");
+  }
 }
 
 // ========================================
@@ -297,12 +395,18 @@ async function goToAccount() {
   }
 
   try {
+
     await syncStickerAccount(currentUser);
+
   } catch (error) {
+
     console.error("Account sync error:", error);
+
+    openSignIn();
+
     authStatus.textContent =
       "Account sync failed: " + error.message;
-    openSignIn();
+
     return;
   }
 
@@ -347,8 +451,7 @@ authButton.onclick = async () => {
 // BUTTON ACTIONS
 // ========================================
 
-document.getElementById("signin-button").onclick =
-  goToAccount;
+signinButton.onclick = goToAccount;
 
 document.getElementById("pay-button").onclick =
   goToAccount;
@@ -367,20 +470,26 @@ async function restoreSession() {
   }
 
   currentUser = data.user || null;
+  updateAccountButton();
 }
 
 client.auth.onAuthStateChange((event, session) => {
 
   currentUser = session?.user || null;
+  updateAccountButton();
 
   if (event === "SIGNED_IN" && currentUser) {
+
+    const user = currentUser;
+
     setTimeout(async () => {
       try {
-        await syncStickerAccount(currentUser);
+        await syncStickerAccount(user);
       } catch (error) {
         console.error("Account sync error:", error);
       }
     }, 0);
+
   }
 });
 
