@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -93,10 +92,6 @@ body {
   line-height: 1.2;
   white-space: nowrap;
   pointer-events: none;
-}
-
-.awt-price-tag.error {
-  color: #ffa3a3;
 }
 
 /* CLICKABLE AREAS */
@@ -272,10 +267,6 @@ body {
   font-size: 11px;
   font-weight: bold;
   pointer-events: none;
-}
-
-.purchase-price-tag.error {
-  color: #ffa3a3;
 }
 
 .purchase-hotspot {
@@ -694,6 +685,9 @@ const ACCOUNT_URL =
 const PRICE_REFRESH_MS = 60000;
 const PAYMENT_CHECK_MS = 6000;
 
+const PRICE_CACHE_KEY =
+  "sticker_mania_last_published_awt_usd";
+
 const client = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_KEY
@@ -774,7 +768,7 @@ async function functionError(error) {
   return message;
 }
 
-/* LIVE PRICE */
+/* PUBLISHED PRICE = LIVE PRICE */
 
 function formatPrice(price) {
   return "$" + new Intl.NumberFormat("en-US", {
@@ -783,12 +777,52 @@ function formatPrice(price) {
   }).format(price);
 }
 
-function displayPrice(value, error = false) {
+function displayPrice(value) {
   for (const label of [priceMain, pricePurchase]) {
     label.textContent = value;
-    label.classList.toggle("error", error);
   }
 }
+
+function setPublishedPrice(price) {
+  if (!Number.isFinite(price) || price <= 0) {
+    return;
+  }
+
+  currentAWTPrice = price;
+
+  try {
+    localStorage.setItem(
+      PRICE_CACHE_KEY,
+      String(price)
+    );
+  } catch {}
+
+  displayPrice(formatPrice(price));
+}
+
+/*
+  The published price and live price are one value.
+
+  Retrieve the published price through awt-price.
+
+  Once received, display it and remember it.
+
+  Do not erase an established price because
+  a later request fails.
+*/
+
+try {
+  const remembered = Number(
+    localStorage.getItem(PRICE_CACHE_KEY)
+  );
+
+  if (
+    Number.isFinite(remembered) &&
+    remembered > 0
+  ) {
+    currentAWTPrice = remembered;
+  }
+} catch {}
 
 async function refreshAWTPrice() {
   if (pricePromise) {
@@ -797,20 +831,27 @@ async function refreshAWTPrice() {
 
   pricePromise = (async () => {
     try {
-      const { data, error } = await client.functions.invoke(
-        "awt-price",
-        {
-          method: "POST",
-          body: { mint: AWT_MINT }
-        }
-      );
+      const { data, error } =
+        await client.functions.invoke(
+          "awt-price",
+          {
+            method: "POST",
+            body: {
+              mint: AWT_MINT
+            }
+          }
+        );
 
       if (error) {
-        throw new Error(await functionError(error));
+        throw new Error(
+          await functionError(error)
+        );
       }
 
       if (!data || data.success !== true) {
-        throw new Error(data?.error || "Price lookup failed");
+        throw new Error(
+          data?.error || "Price request failed"
+        );
       }
 
       if (data.mint !== AWT_MINT) {
@@ -819,21 +860,29 @@ async function refreshAWTPrice() {
 
       const price = Number(data.priceUsd);
 
-      if (!Number.isFinite(price) || price <= 0) {
-        throw new Error("Invalid price");
+      if (
+        !Number.isFinite(price) ||
+        price <= 0
+      ) {
+        throw new Error("Invalid published price");
       }
 
-      currentAWTPrice = price;
-      displayPrice(formatPrice(price));
+      setPublishedPrice(price);
 
       return price;
+
     } catch (error) {
-      currentAWTPrice = null;
-      displayPrice("N/A", true);
+      /*
+        Keep the last published price.
+        Do not replace it with N/A.
+      */
 
-      console.error("[AWT PRICE]", error.message);
+      console.error(
+        "[AWT PRICE]",
+        error.message
+      );
 
-      return null;
+      return currentAWTPrice;
     }
   })();
 
@@ -873,7 +922,10 @@ function discordId(user) {
 function updateLoginDisplay() {
   const signedIn = !!currentUser;
 
-  signinButton.classList.toggle("signed-in", signedIn);
+  signinButton.classList.toggle(
+    "signed-in",
+    signedIn
+  );
 
   const avatar =
     currentUser?.user_metadata?.avatar_url;
@@ -902,7 +954,10 @@ async function syncAccount(user) {
     });
 
   if (error) {
-    console.error("[ACCOUNT SYNC]", error.message);
+    console.error(
+      "[ACCOUNT SYNC]",
+      error.message
+    );
   }
 }
 
@@ -920,15 +975,17 @@ authButton.onclick = async () => {
   authStatus.textContent = "";
 
   try {
-    const { error } = await client.auth.signInWithOAuth({
-      provider: "discord",
-      options: {
-        redirectTo: ACCOUNT_URL,
-        scopes: "identify"
-      }
-    });
+    const { error } =
+      await client.auth.signInWithOAuth({
+        provider: "discord",
+        options: {
+          redirectTo: ACCOUNT_URL,
+          scopes: "identify"
+        }
+      });
 
     if (error) throw error;
+
   } catch (error) {
     authStatus.textContent = error.message;
   } finally {
@@ -953,28 +1010,35 @@ authOverlay.onclick = event => {
   }
 };
 
-client.auth.onAuthStateChange((event, session) => {
-  currentUser = session?.user || null;
+client.auth.onAuthStateChange(
+  (event, session) => {
+    currentUser = session?.user || null;
 
-  updateLoginDisplay();
+    updateLoginDisplay();
 
-  if (event === "SIGNED_IN" && currentUser) {
-    const user = currentUser;
+    if (event === "SIGNED_IN" && currentUser) {
+      const user = currentUser;
 
-    setTimeout(() => {
-      void syncAccount(user);
-    }, 0);
+      setTimeout(() => {
+        void syncAccount(user);
+      }, 0);
+    }
   }
-});
+);
 
 async function restoreUser() {
-  const { data, error } = await client.auth.getUser();
+  const { data, error } =
+    await client.auth.getUser();
 
   if (error) {
-    console.error("[SESSION]", error.message);
+    console.error(
+      "[SESSION]",
+      error.message
+    );
   }
 
   currentUser = data?.user || null;
+
   updateLoginDisplay();
 }
 
@@ -986,31 +1050,39 @@ async function invoke(name, body) {
   const { data: sessionData, error: sessionError } =
     await client.auth.getSession();
 
-  if (sessionError) throw sessionError;
+  if (sessionError) {
+    throw sessionError;
+  }
 
-  const token = sessionData.session?.access_token;
+  const token =
+    sessionData.session?.access_token;
 
   if (!token) {
     throw new Error("Sign in with Discord");
   }
 
-  const { data, error } = await client.functions.invoke(
-    name,
-    {
-      method: "POST",
-      body,
-      headers: {
-        Authorization: "Bearer " + token
+  const { data, error } =
+    await client.functions.invoke(
+      name,
+      {
+        method: "POST",
+        body,
+        headers: {
+          Authorization: "Bearer " + token
+        }
       }
-    }
-  );
+    );
 
   if (error) {
-    throw new Error(await functionError(error));
+    throw new Error(
+      await functionError(error)
+    );
   }
 
   if (!data || data.error) {
-    throw new Error(data?.error || "Invalid function response");
+    throw new Error(
+      data?.error || "Invalid function response"
+    );
   }
 
   return data;
@@ -1026,23 +1098,35 @@ function pendingKey() {
 }
 
 function savePending(purchase) {
-  localStorage.setItem(
-    pendingKey(),
-    JSON.stringify(purchase)
-  );
+  try {
+    localStorage.setItem(
+      pendingKey(),
+      JSON.stringify(purchase)
+    );
+  } catch (error) {
+    console.error(
+      "[SAVE PENDING]",
+      error
+    );
+  }
 }
 
 function readPending() {
   try {
-    const raw = localStorage.getItem(pendingKey());
+    const raw =
+      localStorage.getItem(pendingKey());
+
     return raw ? JSON.parse(raw) : null;
+
   } catch {
     return null;
   }
 }
 
 function clearPending() {
-  localStorage.removeItem(pendingKey());
+  try {
+    localStorage.removeItem(pendingKey());
+  } catch {}
 }
 
 /* PURCHASE VALIDATION */
@@ -1053,20 +1137,29 @@ function validatePurchase(data, tier) {
     !data.reference ||
     !data.paymentUrl
   ) {
-    throw new Error("Incomplete purchase response");
+    throw new Error(
+      "Incomplete purchase response"
+    );
   }
 
   if (
     Number(data.priceUsd) !==
     CAPSULE_PRICES[tier]
   ) {
-    throw new Error("Incorrect capsule price");
+    throw new Error(
+      "Incorrect capsule price"
+    );
   }
 
   const amount = Number(data.awtAmount);
 
-  if (!Number.isFinite(amount) || amount <= 0) {
-    throw new Error("Invalid AWT payment amount");
+  if (
+    !Number.isFinite(amount) ||
+    amount <= 0
+  ) {
+    throw new Error(
+      "Invalid AWT payment amount"
+    );
   }
 
   const url = new URL(data.paymentUrl);
@@ -1078,7 +1171,9 @@ function validatePurchase(data, tier) {
     url.searchParams.get("reference") !== data.reference ||
     Number(url.searchParams.get("amount")) !== amount
   ) {
-    throw new Error("Invalid Solana Pay payment request");
+    throw new Error(
+      "Invalid Solana Pay payment request"
+    );
   }
 }
 
@@ -1086,7 +1181,11 @@ function validatePurchase(data, tier) {
 
 function paymentStatus(message, error = false) {
   paymentMessage.textContent = message;
-  paymentMessage.classList.toggle("payment-error", error);
+
+  paymentMessage.classList.toggle(
+    "payment-error",
+    error
+  );
 }
 
 function stopPolling() {
@@ -1119,7 +1218,9 @@ async function showPayment(purchase) {
     purchase.tier.toUpperCase() + " CAPSULE";
 
   paymentUsd.textContent =
-    "$" + Number(purchase.priceUsd).toFixed(2) + " USD";
+    "$" +
+    Number(purchase.priceUsd).toFixed(2) +
+    " USD";
 
   paymentAwt.textContent =
     purchase.awtAmount + " $AWT";
@@ -1129,7 +1230,6 @@ async function showPayment(purchase) {
 
   paymentCopy.hidden = false;
   paymentCheck.hidden = false;
-
   paymentQr.hidden = false;
 
   paymentBack.textContent = "BACK";
@@ -1138,9 +1238,26 @@ async function showPayment(purchase) {
     "Scan with a Solana Pay wallet or open the payment link."
   );
 
+  /*
+    Display the quoted published price
+    associated with this purchase.
+  */
+
+  const quotedAWTPrice =
+    Number(purchase.awtUsd);
+
+  if (
+    Number.isFinite(quotedAWTPrice) &&
+    quotedAWTPrice > 0
+  ) {
+    setPublishedPrice(quotedAWTPrice);
+  }
+
   try {
     if (!window.QRCode) {
-      throw new Error("QR code library unavailable");
+      throw new Error(
+        "QR code library unavailable"
+      );
     }
 
     await QRCode.toCanvas(
@@ -1151,6 +1268,7 @@ async function showPayment(purchase) {
         margin: 2
       }
     );
+
   } catch (error) {
     paymentQr.hidden = true;
 
@@ -1166,12 +1284,15 @@ async function showPayment(purchase) {
 /* VERIFY PAYMENT */
 
 async function checkPayment() {
-  if (!activePurchase || checkingPayment) return;
+  if (!activePurchase || checkingPayment) {
+    return;
+  }
 
   checkingPayment = true;
   paymentCheck.disabled = true;
 
-  const purchaseId = activePurchase.purchaseId;
+  const purchaseId =
+    activePurchase.purchaseId;
 
   try {
     const result = await invoke(
@@ -1195,10 +1316,12 @@ async function checkPayment() {
 
       const reward = result.capsule;
 
-      paymentTitle.textContent = "CAPSULE OPENED";
+      paymentTitle.textContent =
+        "CAPSULE OPENED";
 
       paymentAwt.textContent =
-        reward?.reward_name || "Reward selected";
+        reward?.reward_name ||
+        "Reward selected";
 
       const rewardType =
         reward?.reward_type || "";
@@ -1223,7 +1346,8 @@ async function checkPayment() {
       paymentCheck.hidden = true;
       paymentQr.hidden = true;
 
-      paymentBack.textContent = "BACK TO CAPSULES";
+      paymentBack.textContent =
+        "BACK TO CAPSULES";
 
       return;
     }
@@ -1233,6 +1357,7 @@ async function checkPayment() {
         result.message ||
         "Waiting for Solana payment confirmation..."
       );
+
       return;
     }
 
@@ -1240,13 +1365,18 @@ async function checkPayment() {
       "Purchase status: " + result.status,
       true
     );
+
   } catch (error) {
-    console.error("[VERIFY]", error);
+    console.error(
+      "[VERIFY]",
+      error
+    );
 
     paymentStatus(
       "Verification error: " + error.message,
       true
     );
+
   } finally {
     checkingPayment = false;
     paymentCheck.disabled = false;
@@ -1256,26 +1386,23 @@ async function checkPayment() {
 /* CREATE PURCHASE */
 
 async function buyCapsule(tier) {
-  if (purchasing) return;
+  if (purchasing) {
+    return;
+  }
+
+  if (!Object.prototype.hasOwnProperty.call(
+    CAPSULE_PRICES,
+    tier
+  )) {
+    purchaseStatus.textContent =
+      "Invalid capsule selection.";
+
+    return;
+  }
 
   if (!currentUser) {
     closePurchase();
     openAuth();
-    return;
-  }
-
-  const pending = readPending();
-
-  if (pending?.purchaseId && pending?.paymentUrl) {
-    try {
-      validatePurchase(pending, pending.tier);
-
-      await showPayment(pending);
-      await checkPayment();
-    } catch (error) {
-      purchaseStatus.textContent = error.message;
-    }
-
     return;
   }
 
@@ -1285,14 +1412,19 @@ async function buyCapsule(tier) {
     button.disabled = true;
   });
 
-  purchaseStatus.textContent = "CREATING PURCHASE...";
+  purchaseStatus.textContent =
+    "CREATING PURCHASE...";
 
   try {
-    const price = await refreshAWTPrice();
+    /*
+      Create the purchase for the selected tier.
 
-    if (price === null) {
-      throw new Error("AWT price unavailable");
-    }
+      Do not block the BUY button because
+      another browser price request failed.
+
+      The purchase backend must provide
+      the published AWT price in its quote.
+    */
 
     const result = await invoke(
       "purchase-capsule",
@@ -1300,6 +1432,16 @@ async function buyCapsule(tier) {
     );
 
     validatePurchase(result, tier);
+
+    const quotedAWTPrice =
+      Number(result.awtUsd);
+
+    if (
+      Number.isFinite(quotedAWTPrice) &&
+      quotedAWTPrice > 0
+    ) {
+      setPublishedPrice(quotedAWTPrice);
+    }
 
     const purchase = {
       purchaseId: result.purchaseId,
@@ -1312,16 +1454,27 @@ async function buyCapsule(tier) {
       expiresAt: result.expiresAt
     };
 
+    /*
+      Save the new selected purchase.
+      An earlier pending purchase no longer
+      overrides the user's selection.
+    */
+
     savePending(purchase);
 
     purchaseStatus.textContent = "";
 
     await showPayment(purchase);
+
   } catch (error) {
-    console.error("[PURCHASE]", error);
+    console.error(
+      "[PURCHASE]",
+      error
+    );
 
     purchaseStatus.textContent =
       "PURCHASE ERROR: " + error.message;
+
   } finally {
     purchasing = false;
 
@@ -1336,19 +1489,44 @@ async function buyCapsule(tier) {
 async function openPurchase() {
   purchaseOverlay.hidden = false;
   paymentPanel.hidden = true;
+
   purchaseStatus.textContent = "";
+
+  /*
+    Refresh the displayed published price.
+    This does not prevent capsule selection.
+  */
 
   void refreshAWTPrice();
 
-  const pending = currentUser ? readPending() : null;
+  /*
+    An existing pending payment can be resumed.
 
-  if (pending?.purchaseId && pending?.paymentUrl) {
+    BACK returns to capsule selection.
+    Selecting a new capsule creates a new purchase.
+  */
+
+  const pending =
+    currentUser ? readPending() : null;
+
+  if (
+    pending?.purchaseId &&
+    pending?.paymentUrl
+  ) {
     try {
-      validatePurchase(pending, pending.tier);
+      validatePurchase(
+        pending,
+        pending.tier
+      );
 
       await showPayment(pending);
       await checkPayment();
+
     } catch (error) {
+      clearPending();
+      activePurchase = null;
+      paymentPanel.hidden = true;
+
       purchaseStatus.textContent =
         "PENDING PURCHASE: " + error.message;
     }
@@ -1360,6 +1538,7 @@ function closePurchase() {
 
   purchaseOverlay.hidden = true;
   paymentPanel.hidden = true;
+
   purchaseStatus.textContent = "";
 
   payButton.focus();
@@ -1379,27 +1558,37 @@ purchaseOverlay.onclick = event => {
 
 tierButtons.forEach(button => {
   button.onclick = () => {
-    void buyCapsule(button.dataset.tier);
+    void buyCapsule(
+      button.dataset.tier
+    );
   };
 });
 
 /* PAYMENT ACTIONS */
 
-paymentWallet.addEventListener("click", event => {
-  if (!activePurchase) {
-    event.preventDefault();
+paymentWallet.addEventListener(
+  "click",
+  event => {
+    if (!activePurchase) {
+      event.preventDefault();
+    }
   }
-});
+);
 
 paymentCopy.onclick = async () => {
-  if (!activePurchase) return;
+  if (!activePurchase) {
+    return;
+  }
 
   try {
     await navigator.clipboard.writeText(
       activePurchase.paymentUrl
     );
 
-    paymentStatus("Solana Pay link copied.");
+    paymentStatus(
+      "Solana Pay link copied."
+    );
+
   } catch (error) {
     paymentStatus(
       "Copy failed: " + error.message,
@@ -1415,6 +1604,14 @@ paymentCheck.onclick = () => {
 paymentBack.onclick = () => {
   stopPolling();
 
+  /*
+    Return to capsule selection.
+
+    An existing pending purchase is
+    not allowed to override the next
+    capsule the user selects.
+  */
+
   if (
     activePurchase &&
     !readPending()
@@ -1428,17 +1625,38 @@ paymentBack.onclick = () => {
 
 /* CLOSE */
 
-document.addEventListener("keydown", event => {
-  if (event.key !== "Escape") return;
+document.addEventListener(
+  "keydown",
+  event => {
+    if (event.key !== "Escape") {
+      return;
+    }
 
-  if (!purchaseOverlay.hidden) {
-    closePurchase();
-  } else {
-    closeAuth();
+    if (!purchaseOverlay.hidden) {
+      closePurchase();
+    } else {
+      closeAuth();
+    }
   }
-});
+);
 
 /* START */
+
+/*
+  Show the last successfully retrieved
+  published price immediately when available.
+*/
+
+if (currentAWTPrice !== null) {
+  displayPrice(
+    formatPrice(currentAWTPrice)
+  );
+}
+
+/*
+  Retrieve the published price and
+  keep updating that same value.
+*/
 
 void refreshAWTPrice();
 
@@ -1446,11 +1664,15 @@ setInterval(() => {
   void refreshAWTPrice();
 }, PRICE_REFRESH_MS);
 
-document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) {
-    void refreshAWTPrice();
+document.addEventListener(
+  "visibilitychange",
+  () => {
+    if (!document.hidden) {
+      void refreshAWTPrice();
+    }
   }
-});
+);
+
 </script>
 
 </body>
