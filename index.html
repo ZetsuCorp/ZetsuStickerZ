@@ -27,9 +27,7 @@ body {
   font-family: Arial, sans-serif;
 }
 
-/* ========================================
-   ARCADE VIEWPORT
-======================================== */
+/* ARCADE */
 
 .arcade-viewport {
   width: 100%;
@@ -40,24 +38,17 @@ body {
   justify-content: center;
   padding: 12px;
   overflow-x: hidden;
-  background:
-    radial-gradient(
-      ellipse at center,
-      #24113f 0%,
-      #10071f 55%,
-      #05030c 100%
-    );
+  background: radial-gradient(
+    ellipse at center,
+    #24113f 0%,
+    #10071f 55%,
+    #05030c 100%
+  );
 }
-
-/* ========================================
-   ARCADE CONTAINER
-======================================== */
 
 .arcade-container {
   position: relative;
-  width: min(100%, 900px);
-  max-height: calc(100vh - 24px);
-  max-height: calc(100dvh - 24px);
+  width: min(100%, 900px, calc(100dvh - 24px));
   aspect-ratio: 1 / 1;
   flex: 0 1 auto;
   display: flex;
@@ -73,10 +64,6 @@ body {
   overflow: hidden;
 }
 
-/* ========================================
-   GAME CONTAINER
-======================================== */
-
 .game-container {
   position: relative;
   width: 100%;
@@ -91,9 +78,7 @@ body {
   object-fit: contain;
 }
 
-/* ========================================
-   DISPENSER
-======================================== */
+/* DISPENSER */
 
 .dispenser-container {
   position: absolute;
@@ -104,9 +89,7 @@ body {
   pointer-events: none;
 }
 
-/* ========================================
-   BUTTON HOTSPOTS
-======================================== */
+/* MACHINE BUTTONS */
 
 .hotspot {
   position: absolute;
@@ -138,9 +121,7 @@ body {
   overflow: hidden;
 }
 
-/* ========================================
-   SIGNED-IN COLLECTION BUTTON
-======================================== */
+/* COLLECTION BUTTON */
 
 .collection-button {
   display: none;
@@ -177,19 +158,17 @@ body {
   text-shadow: 0 0 5px #527cff;
 }
 
-/* ========================================
-   SIGN IN OVERLAY
-======================================== */
+/* MODALS */
 
 .overlay {
   display: none;
   position: fixed;
   inset: 0;
-  background: #05020be0;
+  background: #05020be8;
   align-items: center;
   justify-content: center;
   z-index: 10;
-  padding: 20px;
+  padding: 16px;
 }
 
 .overlay.open {
@@ -203,6 +182,8 @@ body {
   border-radius: 18px;
   padding: 32px;
   width: min(420px, 95vw);
+  max-height: 90dvh;
+  overflow-y: auto;
   text-align: center;
   box-shadow: 0 0 30px #8c24d455;
 }
@@ -225,11 +206,12 @@ body {
   padding: 12px 22px;
   border-radius: 10px;
   cursor: pointer;
+  font-weight: bold;
 }
 
 .action:disabled {
-  opacity: 0.6;
-  cursor: wait;
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 #auth-status {
@@ -237,19 +219,102 @@ body {
   overflow-wrap: anywhere;
 }
 
-/* ========================================
-   MOBILE VIEWPORT
-======================================== */
+/* PURCHASE MODAL */
+
+.purchase-panel {
+  width: min(460px, 95vw);
+}
+
+.purchase-panel h2 {
+  margin-bottom: 8px;
+  color: #fff;
+  text-shadow: 0 0 12px #bd3aff;
+}
+
+.purchase-description {
+  color: #cbb6df;
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+
+.purchase-tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tier {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #69349d;
+  border-radius: 12px;
+  background: #120a26;
+  text-align: left;
+}
+
+.tier-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.tier-name {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.tier-price {
+  color: #e4d5f5;
+  font-size: 14px;
+}
+
+.tier.common .tier-name {
+  color: #a9d5ff;
+}
+
+.tier.rare .tier-name {
+  color: #d786ff;
+}
+
+.tier.legendary .tier-name {
+  color: #ffd36c;
+}
+
+.purchase-action {
+  background: #d837f2;
+  color: white;
+  border: 0;
+  border-radius: 8px;
+  padding: 11px 13px;
+  font-weight: bold;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.purchase-action:hover {
+  background: #ed62ff;
+}
+
+.purchase-status {
+  min-height: 18px;
+  margin: 16px 0 0;
+  color: #e9c9ff;
+  font-size: 13px;
+}
+
+/* MOBILE */
 
 @media (max-width: 600px) {
-
   .arcade-viewport {
     padding: 4px;
   }
 
   .arcade-container {
-    width: 100%;
-    max-height: calc(100dvh - 8px);
+    width: min(100%, calc(100dvh - 8px));
     border-radius: 8px;
     border-width: 1px;
   }
@@ -268,74 +333,63 @@ body {
   .panel {
     padding: 25px 18px;
   }
-}
 
-/* ========================================
-   SHORT DESKTOP / LANDSCAPE SCREENS
-======================================== */
+  .tier {
+    padding: 12px;
+  }
 
-@media (min-width: 601px) and (max-height: 750px) {
+  .tier-name {
+    font-size: 14px;
+  }
 
-  .arcade-container {
-    width: min(100%, calc(100dvh - 24px), 900px);
+  .purchase-action {
+    font-size: 11px;
+    padding: 10px;
   }
 }
-
 </style>
 </head>
 
 <body>
 
-<!-- ========================================
-     ARCADE VIEWPORT
-======================================== -->
-
+<!-- ARCADE -->
 <main class="arcade-viewport">
 
-  <!-- ARCADE CONTAINER -->
   <div class="arcade-container">
 
-    <!-- GAME CONTAINER -->
     <div class="game-container" id="game-container">
 
-      <!-- MACHINE IMAGE -->
       <img
         class="machine"
         src="assets/ZetsuStickerZ.png"
         alt="Sticker Mania Machine"
       >
 
-      <!-- DISPENSER CONTAINER -->
       <div
         class="dispenser-container"
         id="dispenser-container">
       </div>
 
-      <!-- PAY BUTTON -->
       <button
         class="hotspot pay-button"
         id="pay-button"
         aria-label="Pay with AWT">
       </button>
 
-      <!-- SIGN IN / COLLECTION BUTTON -->
       <button
         class="hotspot signin-button"
         id="signin-button"
         aria-label="Sign in with Discord">
 
         <span class="collection-button" id="collection-button">
-
           <img
             class="collection-avatar"
             id="collection-avatar"
             alt="Discord Profile"
           >
-
           <span class="collection-label">
             MY COLLECTION
           </span>
-
         </span>
 
       </button>
@@ -346,15 +400,11 @@ body {
 
 </main>
 
-<!-- ========================================
-     SIGN IN OVERLAY
-======================================== -->
-
+<!-- SIGN IN MODAL -->
 <div class="overlay" id="overlay">
-
   <div class="panel">
 
-    <button class="close" id="close">×</button>
+    <button class="close" id="close" aria-label="Close">×</button>
 
     <h2>SIGN IN</h2>
 
@@ -370,13 +420,84 @@ body {
     <p id="auth-status" role="status"></p>
 
   </div>
+</div>
+
+<!-- PURCHASE MODAL -->
+<div class="overlay" id="purchase-overlay">
+
+  <div class="panel purchase-panel">
+
+    <button
+      class="close"
+      id="purchase-close"
+      aria-label="Close">
+      ×
+    </button>
+
+    <h2>STICKER MANIA</h2>
+
+    <p class="purchase-description">
+      Select your purchase tier.
+      Payments are made using $AWT on Solana.
+    </p>
+
+    <div class="purchase-tiers">
+
+      <div class="tier common">
+        <div class="tier-info">
+          <span class="tier-name">COMMON</span>
+          <span class="tier-price">$0.50 USD</span>
+        </div>
+
+        <button
+          class="purchase-action"
+          data-tier="common">
+          PURCHASE
+        </button>
+      </div>
+
+      <div class="tier rare">
+        <div class="tier-info">
+          <span class="tier-name">RARE</span>
+          <span class="tier-price">$1.00 USD</span>
+        </div>
+
+        <button
+          class="purchase-action"
+          data-tier="rare">
+          PURCHASE
+        </button>
+      </div>
+
+      <div class="tier legendary">
+        <div class="tier-info">
+          <span class="tier-name">LEGENDARY</span>
+          <span class="tier-price">$3.00 USD</span>
+        </div>
+
+        <button
+          class="purchase-action"
+          data-tier="legendary">
+          PURCHASE
+        </button>
+      </div>
+
+    </div>
+
+    <p
+      class="purchase-status"
+      id="purchase-status"
+      role="status">
+    </p>
+
+  </div>
 
 </div>
 
 <script>
 
 // ========================================
-// SUPABASE CONFIGURATION
+// SUPABASE
 // ========================================
 
 const SUPABASE_URL =
@@ -408,12 +529,17 @@ const authStatus = document.getElementById("auth-status");
 const signinButton = document.getElementById("signin-button");
 const collectionAvatar = document.getElementById("collection-avatar");
 
+const purchaseOverlay =
+  document.getElementById("purchase-overlay");
+
+const purchaseStatus =
+  document.getElementById("purchase-status");
+
 // ========================================
-// DISCORD ACCOUNT INFORMATION
+// DISCORD USER DATA
 // ========================================
 
 function getDiscordUsername(user) {
-
   if (!user) return "Discord user";
 
   return (
@@ -429,7 +555,6 @@ function getDiscordUsername(user) {
 }
 
 function getDiscordId(user) {
-
   if (!user) return null;
 
   const discordIdentity = user.identities?.find(
@@ -446,14 +571,13 @@ function getDiscordId(user) {
 }
 
 function getDiscordAvatar(user) {
-
   if (!user) return "";
 
   return user.user_metadata?.avatar_url || "";
 }
 
 // ========================================
-// UPDATE COLLECTION BUTTON
+// COLLECTION BUTTON
 // ========================================
 
 function updateAccountButton() {
@@ -461,7 +585,6 @@ function updateAccountButton() {
   if (currentUser) {
 
     signinButton.classList.add("signed-in");
-
     signinButton.setAttribute(
       "aria-label",
       "View My Collection"
@@ -470,21 +593,16 @@ function updateAccountButton() {
     const avatarUrl = getDiscordAvatar(currentUser);
 
     if (avatarUrl) {
-
       collectionAvatar.src = avatarUrl;
       collectionAvatar.style.display = "block";
-
     } else {
-
       collectionAvatar.removeAttribute("src");
       collectionAvatar.style.display = "none";
-
     }
 
   } else {
 
     signinButton.classList.remove("signed-in");
-
     signinButton.setAttribute(
       "aria-label",
       "Sign in with Discord"
@@ -495,7 +613,7 @@ function updateAccountButton() {
 }
 
 // ========================================
-// CREATE / UPDATE ACCOUNT
+// ACCOUNT SYNC
 // ========================================
 
 async function syncStickerAccount(user) {
@@ -519,43 +637,34 @@ async function syncStickerAccount(user) {
 }
 
 // ========================================
-// SIGN IN OVERLAY
+// SIGN IN
 // ========================================
 
 function openSignIn() {
-
   authStatus.textContent = "";
   overlay.classList.add("open");
-
 }
 
 function closeSignIn() {
-
   overlay.classList.remove("open");
-
 }
 
 // ========================================
-// GO TO ACCOUNT
+// ACCOUNT PAGE
 // ========================================
 
 async function goToAccount() {
 
   if (!currentUser) {
-
     openSignIn();
     return;
-
   }
 
   try {
-
     await syncStickerAccount(currentUser);
-
   } catch (error) {
 
     console.error("Account sync error:", error);
-
     openSignIn();
 
     authStatus.textContent =
@@ -568,7 +677,7 @@ async function goToAccount() {
 }
 
 // ========================================
-// DISCORD AUTHENTICATION
+// DISCORD OAUTH
 // ========================================
 
 authButton.onclick = async () => {
@@ -595,23 +704,73 @@ authButton.onclick = async () => {
     console.error("Discord auth error:", error);
 
   } finally {
-
     authButton.disabled = false;
-
   }
 };
 
 // ========================================
-// BUTTON ACTIONS
+// PURCHASE MODAL
+// ========================================
+
+function openPurchaseModal() {
+
+  purchaseStatus.textContent = "";
+  purchaseOverlay.classList.add("open");
+
+}
+
+function closePurchaseModal() {
+
+  purchaseOverlay.classList.remove("open");
+
+}
+
+// Purchase tier prices are currently in USD.
+// Solana Pay integration will be added in Step 2.
+
+const PURCHASE_TIERS = {
+  common: 0.50,
+  rare: 1.00,
+  legendary: 3.00
+};
+
+function selectPurchaseTier(tier) {
+
+  const price = PURCHASE_TIERS[tier];
+
+  if (price === undefined) return;
+
+  purchaseStatus.textContent =
+    `${tier.toUpperCase()} selected: $${price.toFixed(2)} USD. ` +
+    "Solana Pay setup is next.";
+
+}
+
+document.querySelectorAll(".purchase-action").forEach(
+  button => {
+
+    button.addEventListener("click", () => {
+      selectPurchaseTier(button.dataset.tier);
+    });
+
+  }
+);
+
+// ========================================
+// MACHINE BUTTONS
 // ========================================
 
 signinButton.onclick = goToAccount;
 
-document.getElementById("pay-button").onclick =
-  goToAccount;
+// PAY WITH AWT now opens the purchase modal.
+document.getElementById("pay-button").onclick = () => {
+
+  openPurchaseModal();
+
+};
 
 // ========================================
-// RESTORE SESSION
+// SESSION RESTORATION
 // ========================================
 
 async function restoreSession() {
@@ -619,10 +778,8 @@ async function restoreSession() {
   const { data, error } = await client.auth.getUser();
 
   if (error) {
-
     console.error("Session error:", error);
     return;
-
   }
 
   currentUser = data.user || null;
@@ -641,13 +798,9 @@ client.auth.onAuthStateChange((event, session) => {
     setTimeout(async () => {
 
       try {
-
         await syncStickerAccount(user);
-
       } catch (error) {
-
         console.error("Account sync error:", error);
-
       }
 
     }, 0);
@@ -657,24 +810,30 @@ client.auth.onAuthStateChange((event, session) => {
 restoreSession();
 
 // ========================================
-// CLOSE OVERLAY
+// CLOSE MODALS
 // ========================================
 
 document.getElementById("close").onclick =
   closeSignIn;
 
-overlay.onclick = (event) => {
+document.getElementById("purchase-close").onclick =
+  closePurchaseModal;
 
-  if (event.target === overlay) {
-    closeSignIn();
-  }
-
+overlay.onclick = event => {
+  if (event.target === overlay) closeSignIn();
 };
 
-document.addEventListener("keydown", (event) => {
+purchaseOverlay.onclick = event => {
+  if (event.target === purchaseOverlay) {
+    closePurchaseModal();
+  }
+};
+
+document.addEventListener("keydown", event => {
 
   if (event.key === "Escape") {
     closeSignIn();
+    closePurchaseModal();
   }
 
 });
