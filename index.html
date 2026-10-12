@@ -4,9 +4,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <title>Sticker Mania</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
 
 <style>
 * {
@@ -77,6 +79,56 @@ body {
   pointer-events: none;
 }
 
+/* LIVE AWT PRICE */
+
+.awt-price-banner {
+  position: absolute;
+  z-index: 3;
+  top: 2%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 45%;
+  max-width: 340px;
+  padding: 8px 12px;
+  border: 1px solid #b93bff;
+  border-radius: 10px;
+  background: rgba(9, 5, 26, 0.93);
+  box-shadow: 0 0 15px #a331ff66;
+  text-align: center;
+  pointer-events: none;
+}
+
+.awt-price-label {
+  display: block;
+  color: #d8aaff;
+  font-size: clamp(7px, 1.2vw, 11px);
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.awt-price-value {
+  display: block;
+  margin-top: 3px;
+  color: #69ffca;
+  font-size: clamp(12px, 2vw, 21px);
+  font-weight: 900;
+  text-shadow: 0 0 8px #16d9a4;
+  overflow-wrap: anywhere;
+}
+
+.awt-price-value.unavailable {
+  color: #ff9f9f;
+  text-shadow: none;
+  font-size: clamp(9px, 1.4vw, 14px);
+}
+
+.awt-price-source {
+  display: block;
+  margin-top: 3px;
+  color: #c6b8d9;
+  font-size: clamp(6px, 0.9vw, 9px);
+}
+
 /* ARCADE BUTTONS */
 
 .hotspot {
@@ -110,7 +162,7 @@ body {
   overflow: hidden;
 }
 
-/* COLLECTION BUTTON */
+/* COLLECTION */
 
 .collection-button {
   display: none;
@@ -147,7 +199,7 @@ body {
   text-shadow: 0 0 5px #527cff;
 }
 
-/* DISCORD LOGIN MODAL */
+/* LOGIN */
 
 .auth-overlay {
   display: none;
@@ -205,7 +257,7 @@ body {
   overflow-wrap: anywhere;
 }
 
-/* PURCHASE MODAL */
+/* PURCHASE */
 
 .purchase-overlay {
   position: fixed;
@@ -218,7 +270,8 @@ body {
   background: rgba(5, 2, 11, 0.85);
 }
 
-.purchase-overlay[hidden] {
+.purchase-overlay[hidden],
+.payment-panel[hidden] {
   display: none;
 }
 
@@ -239,8 +292,6 @@ body {
   height: auto;
 }
 
-/* PURCHASE HOTSPOTS */
-
 .purchase-hotspot {
   position: absolute;
   z-index: 2;
@@ -248,6 +299,10 @@ body {
   border: 0;
   background: transparent;
   cursor: pointer;
+}
+
+.purchase-hotspot:disabled {
+  cursor: wait;
 }
 
 .purchase-common {
@@ -288,55 +343,101 @@ body {
   font-size: clamp(9px, 1.4vw, 13px);
   text-align: center;
   text-shadow: 0 0 8px #bd3aff;
+  overflow-wrap: anywhere;
   pointer-events: none;
 }
 
-/* SOLANA PAY PANEL */
+/* LIVE PRICE INSIDE PURCHASE MENU */
 
-.payment-details {
+.purchase-awt-price {
   position: absolute;
-  z-index: 4;
-  left: 9%;
-  right: 9%;
-  top: 15%;
-  padding: 15px;
+  z-index: 3;
+  top: 2%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 55%;
+  padding: 6px;
+  border-radius: 8px;
+  border: 1px solid #a63aff;
+  background: rgba(8, 4, 20, 0.95);
+  text-align: center;
+  pointer-events: none;
+}
+
+/* SOLANA PAY */
+
+.payment-panel {
+  position: absolute;
+  inset: 4%;
+  z-index: 5;
+  background: rgba(9, 5, 22, 0.98);
   border: 2px solid #bd3aff;
   border-radius: 12px;
-  background: rgba(10, 5, 26, 0.97);
-  color: white;
+  padding: 12px;
   text-align: center;
-  box-shadow: 0 0 24px #9b28e888;
-  font-size: clamp(11px, 1.8vw, 15px);
+  overflow-y: auto;
+  box-shadow: 0 0 25px #bd3aff77;
 }
 
-.payment-details[hidden] {
-  display: none;
+.payment-panel h2 {
+  margin: 6px 0;
+  font-size: clamp(15px, 2.5vw, 23px);
 }
 
-.payment-details p {
+.payment-panel p {
+  font-size: clamp(11px, 1.6vw, 14px);
   overflow-wrap: anywhere;
 }
 
-.payment-details a,
-.payment-details button {
+.payment-amount {
+  color: #f6d2ff;
+  font-size: clamp(16px, 3vw, 24px);
+  font-weight: bold;
+}
+
+#payment-qr {
+  display: block;
+  width: min(42%, 180px);
+  height: auto;
+  aspect-ratio: 1;
+  margin: 10px auto;
+  background: white;
+  padding: 7px;
+  border-radius: 8px;
+}
+
+.payment-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.payment-actions button,
+.payment-actions a {
   display: inline-block;
-  margin: 5px;
   padding: 9px 12px;
-  background: #b82be8;
-  color: white;
+  background: #ae2bdd;
   border: 0;
   border-radius: 7px;
+  color: white;
+  text-decoration: none;
+  font-size: 12px;
   font-weight: bold;
   cursor: pointer;
-  text-decoration: none;
 }
 
-.payment-details .secondary-action {
-  background: #292044;
+.payment-actions .secondary {
+  background: #383050;
 }
 
-.payment-details button:disabled {
-  opacity: 0.5;
+#payment-message {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.payment-error {
+  color: #ff9f9f;
 }
 
 /* MOBILE */
@@ -350,6 +451,11 @@ body {
     width: min(100%, calc(100dvh - 8px));
     border-radius: 8px;
     border-width: 1px;
+  }
+
+  .awt-price-banner {
+    padding: 4px;
+    border-radius: 5px;
   }
 
   .collection-button {
@@ -381,16 +487,26 @@ body {
     font-size: 8px;
   }
 
-  .payment-details {
-    padding: 8px;
-    top: 12%;
-    font-size: 10px;
+  .purchase-awt-price {
+    padding: 3px;
   }
 
-  .payment-details a,
-  .payment-details button {
+  .payment-panel {
+    padding: 7px;
+  }
+
+  .payment-panel p {
+    margin: 6px 0;
+  }
+
+  #payment-qr {
+    width: min(35%, 130px);
+    margin: 5px auto;
+  }
+
+  .payment-actions button,
+  .payment-actions a {
     padding: 6px;
-    margin: 3px;
     font-size: 10px;
   }
 }
@@ -399,7 +515,7 @@ body {
 
 <body>
 
-<!-- ARCADE -->
+<!-- VENDING MACHINE -->
 
 <main class="arcade-viewport">
   <div class="arcade-container">
@@ -411,6 +527,27 @@ body {
         alt="Sticker Mania Machine"
       >
 
+      <!-- LIVE AWT/USD PRICE -->
+
+      <div class="awt-price-banner">
+        <span class="awt-price-label">
+          $AWT / USD
+        </span>
+
+        <strong
+          class="awt-price-value"
+          id="awt-price-main"
+          aria-live="polite">
+          LOADING...
+        </strong>
+
+        <span
+          class="awt-price-source"
+          id="awt-price-updated">
+          SOURCE: COINSNIPER
+        </span>
+      </div>
+
       <div
         class="dispenser-container"
         id="dispenser-container">
@@ -419,7 +556,7 @@ body {
       <button
         class="hotspot pay-button"
         id="pay-button"
-        aria-label="Buy a capsule">
+        aria-label="Buy capsules">
       </button>
 
       <button
@@ -445,7 +582,7 @@ body {
   </div>
 </main>
 
-<!-- PURCHASE MODAL -->
+<!-- CAPSULE PURCHASE MENU -->
 
 <div
   class="purchase-overlay"
@@ -462,76 +599,47 @@ body {
     <img
       class="purchase-art"
       src="assets/zcety.png"
-      alt="Sticker Mania Capsule Options"
+      alt="Capsule Purchase Options"
     >
+
+    <!-- LIVE PRICE INSIDE PURCHASE MENU -->
+
+    <div class="purchase-awt-price">
+      <span class="awt-price-label">
+        LIVE $AWT / USD
+      </span>
+
+      <strong
+        class="awt-price-value"
+        id="awt-price-purchase"
+        aria-live="polite">
+        LOADING...
+      </strong>
+    </div>
 
     <button
       class="purchase-hotspot purchase-common"
       data-tier="common"
-      aria-label="Buy Common capsule for $0.50">
+      aria-label="Buy Common Capsule for $0.50">
     </button>
 
     <button
       class="purchase-hotspot purchase-rare"
       data-tier="rare"
-      aria-label="Buy Rare capsule for $1.00">
+      aria-label="Buy Rare Capsule for $1.00">
     </button>
 
     <button
       class="purchase-hotspot purchase-legendary"
       data-tier="legendary"
-      aria-label="Buy Legendary capsule for $3.00">
+      aria-label="Buy Legendary Capsule for $3.00">
     </button>
 
     <button
       class="purchase-hotspot purchase-close"
       id="purchase-close"
-      aria-label="Close purchase">
+      aria-label="Close purchase menu">
     </button>
-
-    <!-- SOLANA PAY -->
-
-    <div
-      class="payment-details"
-      id="payment-details"
-      hidden
-    >
-      <strong id="payment-title">
-        SOLANA PAY
-      </strong>
-
-      <p id="payment-amount"></p>
-
-      <p
-        id="payment-message"
-        role="status">
-      </p>
-
-      <a
-        id="payment-link"
-        href="#">
-        OPEN SOLANA WALLET
-      </a>
-
-      <button
-        id="payment-copy"
-        type="button">
-        COPY PAYMENT LINK
-      </button>
-
-      <button
-        id="payment-check"
-        type="button">
-        CHECK PAYMENT
-      </button>
-
-      <button
-        id="payment-back"
-        class="secondary-action"
-        type="button">
-        BACK
-      </button>
-    </div>
 
     <p
       class="purchase-status"
@@ -539,10 +647,54 @@ body {
       role="status">
     </p>
 
+    <!-- SOLANA PAY -->
+
+    <section
+      class="payment-panel"
+      id="payment-panel"
+      hidden
+    >
+      <h2 id="payment-title">SOLANA PAY</h2>
+
+      <p id="payment-usd"></p>
+
+      <div
+        class="payment-amount"
+        id="payment-awt">
+      </div>
+
+      <canvas id="payment-qr"></canvas>
+
+      <p id="payment-message" role="status"></p>
+
+      <div class="payment-actions">
+
+        <a id="payment-wallet" href="#">
+          OPEN WALLET
+        </a>
+
+        <button id="payment-copy" type="button">
+          COPY LINK
+        </button>
+
+        <button id="payment-check" type="button">
+          CHECK PAYMENT
+        </button>
+
+        <button
+          id="payment-back"
+          class="secondary"
+          type="button">
+          BACK
+        </button>
+
+      </div>
+    </section>
+
   </div>
 </div>
 
-<!-- DISCORD LOGIN MODAL -->
+<!-- DISCORD LOGIN -->
 
 <div class="auth-overlay" id="auth-overlay">
   <div class="auth-panel">
@@ -567,22 +719,37 @@ body {
       Continue with Discord
     </button>
 
-    <p
-      id="auth-status"
-      role="status">
-    </p>
+    <p id="auth-status" role="status"></p>
 
   </div>
 </div>
 
 <script>
-/* SUPABASE */
+/* CONFIGURATION */
 
 const SUPABASE_URL =
   "https://jqvnrdjrkdjgjbmqmbbl.supabase.co";
 
 const SUPABASE_KEY =
   "sb_publishable_jmEahTk4OssD_IrOZq_6iQ_P6QFFJr6";
+
+const AWT_MINT =
+  "ETvGFek4eDeHP7iC7yceGpduTRypHpsUT6tybwMXpump";
+
+const RECEIVER =
+  "CT1fjjJMaNb2jgwH7rnuyiLcASmtmdRzSw7tQv8VXaRK";
+
+const CAPSULE_PRICES = Object.freeze({
+  common: 0.50,
+  rare: 1.00,
+  legendary: 3.00
+});
+
+const PRICE_FUNCTION = "awt-price";
+const PURCHASE_FUNCTION = "purchase-capsule";
+const VERIFY_FUNCTION = "verify-capsule";
+
+const PRICE_REFRESH_MS = 60000;
 
 const client = window.supabase.createClient(
   SUPABASE_URL,
@@ -592,69 +759,233 @@ const client = window.supabase.createClient(
 const ACCOUNT_URL =
   new URL("account.html", window.location.href).href;
 
-const PENDING_KEY =
-  "sticker_mania_pending";
+const PENDING_KEY = "sticker_mania_pending";
 
 let currentUser = null;
 let activePurchase = null;
 let paymentTimer = null;
 let checkingPayment = false;
+let creatingPurchase = false;
+
+let currentAWTPrice = null;
+let priceRequestRunning = false;
+
+const $ = id => document.getElementById(id);
 
 /* ELEMENTS */
 
-const authOverlay =
-  document.getElementById("auth-overlay");
+const authOverlay = $("auth-overlay");
+const authButton = $("discord-auth");
+const authStatus = $("auth-status");
 
-const authButton =
-  document.getElementById("discord-auth");
+const signinButton = $("signin-button");
+const collectionAvatar = $("collection-avatar");
 
-const authStatus =
-  document.getElementById("auth-status");
+const purchaseOverlay = $("purchase-overlay");
+const purchaseStatus = $("purchase-status");
+const payButton = $("pay-button");
+const purchaseClose = $("purchase-close");
 
-const signinButton =
-  document.getElementById("signin-button");
+const paymentPanel = $("payment-panel");
+const paymentTitle = $("payment-title");
+const paymentUsd = $("payment-usd");
+const paymentAwt = $("payment-awt");
+const paymentMessage = $("payment-message");
+const paymentQr = $("payment-qr");
 
-const collectionAvatar =
-  document.getElementById("collection-avatar");
+const paymentWallet = $("payment-wallet");
+const paymentCopy = $("payment-copy");
+const paymentCheck = $("payment-check");
+const paymentBack = $("payment-back");
 
-const purchaseOverlay =
-  document.getElementById("purchase-overlay");
+const awtPriceMain = $("awt-price-main");
+const awtPricePurchase = $("awt-price-purchase");
+const awtPriceUpdated = $("awt-price-updated");
 
-const purchaseStatus =
-  document.getElementById("purchase-status");
+const tierButtons = [
+  ...document.querySelectorAll("[data-tier]")
+];
 
-const purchaseClose =
-  document.getElementById("purchase-close");
+/* DISPLAY REAL FUNCTION ERRORS */
 
-const payButton =
-  document.getElementById("pay-button");
+async function getFunctionError(error) {
+  if (!error) return "Unknown error";
 
-const paymentDetails =
-  document.getElementById("payment-details");
+  let message = error.message || String(error);
+  const context = error.context;
 
-const paymentTitle =
-  document.getElementById("payment-title");
+  if (context instanceof Response) {
+    const status = context.status;
 
-const paymentAmount =
-  document.getElementById("payment-amount");
+    try {
+      const body = await context.clone().text();
 
-const paymentMessage =
-  document.getElementById("payment-message");
+      if (body) {
+        try {
+          const parsed = JSON.parse(body);
 
-const paymentLink =
-  document.getElementById("payment-link");
+          message =
+            parsed.error ||
+            parsed.message ||
+            parsed.msg ||
+            JSON.stringify(parsed);
+        } catch {
+          message = body;
+        }
+      }
+    } catch (readError) {
+      console.error(
+        "Could not read error response",
+        readError
+      );
+    }
 
-const paymentCopy =
-  document.getElementById("payment-copy");
+    return "HTTP " + status + ": " + message;
+  }
 
-const paymentCheck =
-  document.getElementById("payment-check");
+  if (context?.message) {
+    message += ": " + context.message;
+  }
 
-const paymentBack =
-  document.getElementById("payment-back");
+  return message;
+}
 
-const tierButtons =
-  document.querySelectorAll("[data-tier]");
+/* LIVE AWT PRICE */
+
+function formatAWTPrice(price) {
+  return "$" + new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 12
+  }).format(price);
+}
+
+function setAWTPriceDisplay(value, unavailable = false) {
+  for (const element of [
+    awtPriceMain,
+    awtPricePurchase
+  ]) {
+    element.textContent = value;
+
+    element.classList.toggle(
+      "unavailable",
+      unavailable
+    );
+  }
+}
+
+async function refreshAWTPrice() {
+  if (priceRequestRunning) return currentAWTPrice;
+
+  priceRequestRunning = true;
+
+  try {
+    // Request the real price from the CoinSniper
+    // reader Edge Function on every refresh.
+    const { data, error } =
+      await client.functions.invoke(
+        PRICE_FUNCTION,
+        {
+          method: "POST",
+          body: {
+            mint: AWT_MINT
+          }
+        }
+      );
+
+    if (error) {
+      throw new Error(
+        await getFunctionError(error)
+      );
+    }
+
+    if (!data || data.success !== true) {
+      throw new Error(
+        data?.error || "Price lookup failed"
+      );
+    }
+
+    // Reject a price for any other token.
+    if (data.mint !== AWT_MINT) {
+      throw new Error(
+        "Price belongs to the wrong token"
+      );
+    }
+
+    const price = Number(data.priceUsd);
+
+    if (!Number.isFinite(price) || price <= 0) {
+      throw new Error("Invalid $AWT price");
+    }
+
+    currentAWTPrice = price;
+
+    setAWTPriceDisplay(
+      formatAWTPrice(price),
+      false
+    );
+
+    awtPriceUpdated.textContent =
+      "COINSNIPER · CHECKED " +
+      new Date().toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit"
+      });
+
+    console.log(
+      "[AWT PRICE]",
+      price,
+      "USD"
+    );
+
+    return price;
+
+  } catch (error) {
+    // Do not display a stale value as current.
+    currentAWTPrice = null;
+
+    setAWTPriceDisplay(
+      "PRICE UNAVAILABLE",
+      true
+    );
+
+    awtPriceUpdated.textContent =
+      "COINSNIPER · LOOKUP FAILED";
+
+    console.error(
+      "[AWT PRICE ERROR]",
+      error.message
+    );
+
+    return null;
+
+  } finally {
+    priceRequestRunning = false;
+  }
+}
+
+/* PURCHASE STATUS */
+
+function showPurchaseError(message) {
+  purchaseStatus.textContent = message;
+  purchaseStatus.title = message;
+
+  console.error(
+    "[STICKER MANIA]",
+    message
+  );
+}
+
+function showPaymentMessage(
+  message,
+  isError = false
+) {
+  paymentMessage.textContent = message;
+
+  paymentMessage.classList.toggle(
+    "payment-error",
+    isError
+  );
+}
 
 /* DISCORD ACCOUNT */
 
@@ -749,9 +1080,12 @@ async function goToAccount() {
     window.location.href = ACCOUNT_URL;
   } catch (error) {
     console.error(error);
+
     openSignIn();
+
     authStatus.textContent =
-      "Account sync failed: " + error.message;
+      "Account sync failed: " +
+      error.message;
   }
 }
 
@@ -770,8 +1104,10 @@ authButton.onclick = async () => {
       });
 
     if (error) throw error;
+
   } catch (error) {
     authStatus.textContent = error.message;
+
   } finally {
     authButton.disabled = false;
   }
@@ -784,7 +1120,10 @@ async function restoreSession() {
     await client.auth.getUser();
 
   if (error) {
-    console.error(error);
+    console.error(
+      "Session error:",
+      error
+    );
     return;
   }
 
@@ -792,23 +1131,43 @@ async function restoreSession() {
   updateAccountButton();
 }
 
-client.auth.onAuthStateChange((event, session) => {
-  currentUser = session?.user || null;
-  updateAccountButton();
+client.auth.onAuthStateChange(
+  (event, session) => {
+    const previousId = currentUser?.id;
 
-  if (event === "SIGNED_IN" && currentUser) {
-    const user = currentUser;
+    currentUser =
+      session?.user || null;
 
-    setTimeout(() => {
-      syncStickerAccount(user).catch(console.error);
-    }, 0);
+    updateAccountButton();
+
+    if (
+      previousId &&
+      previousId !== currentUser?.id
+    ) {
+      stopPaymentPolling();
+
+      activePurchase = null;
+      paymentPanel.hidden = true;
+    }
+
+    if (
+      event === "SIGNED_IN" &&
+      currentUser
+    ) {
+      const user = currentUser;
+
+      setTimeout(() => {
+        syncStickerAccount(user).catch(
+          console.error
+        );
+      }, 0);
+    }
   }
-});
+);
 
-restoreSession();
+void restoreSession();
 
-document.getElementById("auth-close").onclick =
-  closeSignIn;
+$("auth-close").onclick = closeSignIn;
 
 authOverlay.onclick = event => {
   if (event.target === authOverlay) {
@@ -816,80 +1175,94 @@ authOverlay.onclick = event => {
   }
 };
 
-/* PURCHASE MODAL */
+/* AUTHENTICATED EDGE FUNCTIONS */
 
-function openPurchase() {
-  purchaseStatus.textContent = "";
-  purchaseOverlay.hidden = false;
+async function invokeFunction(name, body) {
+  const {
+    data: sessionData,
+    error: sessionError
+  } = await client.auth.getSession();
 
-  const pending = loadPendingPurchase();
-
-  if (
-    pending?.purchaseId &&
-    pending?.paymentUrl
-  ) {
-    showPayment(pending);
-    void verifyPayment(false);
-  } else {
-    paymentDetails.hidden = true;
+  if (sessionError) {
+    throw sessionError;
   }
 
-  purchaseClose.focus();
-}
+  const token =
+    sessionData.session?.access_token;
 
-function closePurchase() {
-  stopPaymentPolling();
-  purchaseOverlay.hidden = true;
-  purchaseStatus.textContent = "";
-  payButton.focus();
-}
-
-payButton.addEventListener(
-  "click",
-  openPurchase
-);
-
-purchaseClose.addEventListener(
-  "click",
-  closePurchase
-);
-
-purchaseOverlay.addEventListener(
-  "click",
-  event => {
-    if (event.target === purchaseOverlay) {
-      closePurchase();
-    }
+  if (!token) {
+    throw new Error(
+      "Discord session missing. Sign in again."
+    );
   }
-);
 
-/* PENDING PURCHASE STORAGE */
+  const { data, error } =
+    await client.functions.invoke(name, {
+      body,
+      headers: {
+        Authorization: "Bearer " + token
+      }
+    });
 
-function savePendingPurchase(purchase) {
-  sessionStorage.setItem(
-    PENDING_KEY,
+  if (error) {
+    throw new Error(
+      await getFunctionError(error)
+    );
+  }
+
+  if (!data || typeof data !== "object") {
+    throw new Error(
+      name + " returned an invalid response."
+    );
+  }
+
+  if (data.error) {
+    throw new Error(
+      String(data.error)
+    );
+  }
+
+  return data;
+}
+
+/* PURCHASE STORAGE */
+
+function pendingStorageKey() {
+  return (
+    PENDING_KEY + "_" +
+    (currentUser?.id || "anonymous")
+  );
+}
+
+function savePending(purchase) {
+  localStorage.setItem(
+    pendingStorageKey(),
     JSON.stringify(purchase)
   );
 }
 
-function loadPendingPurchase() {
+function loadPending() {
   try {
-    const stored =
-      sessionStorage.getItem(PENDING_KEY);
+    const raw = localStorage.getItem(
+      pendingStorageKey()
+    );
 
-    return stored
-      ? JSON.parse(stored)
+    return raw
+      ? JSON.parse(raw)
       : null;
+
   } catch {
     return null;
   }
 }
 
-function clearPendingPurchase() {
-  sessionStorage.removeItem(PENDING_KEY);
+function clearPending() {
+  localStorage.removeItem(
+    pendingStorageKey()
+  );
 }
 
-/* PAYMENT POLLING */
+/* PAYMENT TIMER */
 
 function stopPaymentPolling() {
   if (paymentTimer !== null) {
@@ -902,49 +1275,181 @@ function startPaymentPolling() {
   stopPaymentPolling();
 
   paymentTimer = setInterval(() => {
-    void verifyPayment(false);
+    if (
+      activePurchase &&
+      !purchaseOverlay.hidden &&
+      !paymentPanel.hidden
+    ) {
+      void verifyPayment();
+    }
   }, 6000);
 }
 
-function resetPaymentPanel() {
-  stopPaymentPolling();
-  paymentDetails.hidden = true;
-  activePurchase = null;
-  paymentMessage.textContent = "";
+/* BACKEND PAYMENT VALIDATION */
+
+function validatePaymentResponse(data, tier) {
+  if (
+    !data.purchaseId ||
+    typeof data.purchaseId !== "string"
+  ) {
+    throw new Error(
+      "Backend did not return a purchase ID."
+    );
+  }
+
+  if (
+    !data.paymentUrl ||
+    typeof data.paymentUrl !== "string"
+  ) {
+    throw new Error(
+      "Backend did not return a Solana Pay URL."
+    );
+  }
+
+  if (
+    !data.reference ||
+    typeof data.reference !== "string"
+  ) {
+    throw new Error(
+      "Backend did not return a payment reference."
+    );
+  }
+
+  const amount =
+    Number(data.awtAmount);
+
+  if (
+    !Number.isFinite(amount) ||
+    amount <= 0
+  ) {
+    throw new Error(
+      "Backend returned an invalid AWT amount."
+    );
+  }
+
+  if (
+    Number(data.priceUsd) !==
+    CAPSULE_PRICES[tier]
+  ) {
+    throw new Error(
+      "Backend returned an incorrect capsule price."
+    );
+  }
+
+  const url = new URL(
+    data.paymentUrl
+  );
+
+  if (url.protocol !== "solana:") {
+    throw new Error(
+      "Invalid Solana Pay protocol."
+    );
+  }
+
+  if (url.pathname !== RECEIVER) {
+    throw new Error(
+      "Incorrect payment recipient."
+    );
+  }
+
+  if (
+    url.searchParams.get("spl-token") !==
+    AWT_MINT
+  ) {
+    throw new Error(
+      "Incorrect payment token."
+    );
+  }
+
+  if (
+    url.searchParams.get("reference") !==
+    data.reference
+  ) {
+    throw new Error(
+      "Payment reference mismatch."
+    );
+  }
+
+  if (
+    Number(url.searchParams.get("amount")) !==
+    amount
+  ) {
+    throw new Error(
+      "Payment amount mismatch."
+    );
+  }
+
+  return true;
 }
 
-/* DISPLAY SOLANA PAY */
+/* DISPLAY SOLANA PAY REQUEST */
 
-function showPayment(purchase) {
+async function showPayment(purchase) {
   activePurchase = purchase;
 
-  paymentTitle.textContent =
-    purchase.tier.toUpperCase() + " CAPSULE";
+  paymentPanel.hidden = false;
 
-  paymentAmount.textContent =
+  paymentTitle.textContent =
+    purchase.tier.toUpperCase() +
+    " CAPSULE";
+
+  paymentUsd.textContent =
     "$" +
     Number(purchase.priceUsd).toFixed(2) +
-    " USD = " +
-    purchase.awtAmount +
-    " AWT";
+    " USD";
 
-  paymentMessage.textContent =
-    "Complete payment in your Solana wallet.";
+  paymentAwt.textContent =
+    String(purchase.awtAmount) +
+    " $AWT";
 
-  paymentLink.href = purchase.paymentUrl;
+  paymentWallet.href =
+    purchase.paymentUrl;
 
-  paymentLink.style.display = "inline-block";
-  paymentCopy.style.display = "inline-block";
-  paymentCheck.style.display = "inline-block";
+  paymentWallet.hidden = false;
+  paymentCopy.hidden = false;
+  paymentCheck.hidden = false;
 
-  paymentDetails.hidden = false;
+  showPaymentMessage(
+    "Scan the QR code with a Solana Pay wallet " +
+    "or open the payment link."
+  );
+
+  try {
+    if (!window.QRCode) {
+      throw new Error(
+        "QR library unavailable"
+      );
+    }
+
+    await window.QRCode.toCanvas(
+      paymentQr,
+      purchase.paymentUrl,
+      {
+        width: 220,
+        margin: 2,
+        errorCorrectionLevel: "M"
+      }
+    );
+
+    paymentQr.hidden = false;
+
+  } catch (error) {
+    paymentQr.hidden = true;
+
+    showPaymentMessage(
+      "QR unavailable. Use OPEN WALLET " +
+      "or COPY LINK. " +
+      error.message,
+      true
+    );
+  }
 
   startPaymentPolling();
 }
 
-/* VERIFY PAYMENT AND RECEIVE CAPSULE */
+/* VERIFY PAYMENT */
 
-async function verifyPayment(manual = true) {
+async function verifyPayment() {
   if (
     !activePurchase ||
     checkingPayment ||
@@ -955,26 +1460,17 @@ async function verifyPayment(manual = true) {
 
   checkingPayment = true;
 
-  const purchaseId = activePurchase.purchaseId;
+  const purchaseId =
+    activePurchase.purchaseId;
 
-  if (manual) {
-    paymentMessage.textContent =
-      "Checking Solana payment...";
-  }
+  paymentCheck.disabled = true;
 
   try {
-    const { data, error } =
-      await client.functions.invoke(
-        "verify-capsule",
-        {
-          body: { purchaseId }
-        }
-      );
+    const result = await invokeFunction(
+      VERIFY_FUNCTION,
+      { purchaseId }
+    );
 
-    if (error) throw error;
-
-    // Ignore an old request if the player
-    // has moved to a different purchase.
     if (
       !activePurchase ||
       activePurchase.purchaseId !== purchaseId
@@ -982,187 +1478,282 @@ async function verifyPayment(manual = true) {
       return;
     }
 
-    if (data?.status === "fulfilled") {
+    if (result.status === "fulfilled") {
       stopPaymentPolling();
-      clearPendingPurchase();
+      clearPending();
 
-      const capsule = data.capsule;
+      const capsule =
+        result.capsule;
+
+      paymentTitle.textContent =
+        "CAPSULE RECEIVED";
 
       if (capsule) {
-        paymentTitle.textContent =
-          "CAPSULE #" + capsule.id;
+        paymentAwt.textContent =
+          "CAPSULE #" +
+          capsule.id;
 
-        paymentMessage.textContent =
+        showPaymentMessage(
           "YOU RECEIVED: " +
           capsule.reward_name +
-          " (" +
-          capsule.reward_type.toUpperCase() +
-          ")";
+          "\nTYPE: " +
+          capsule.reward_type.toUpperCase()
+        );
       } else {
-        paymentMessage.textContent =
-          "Payment verified. Capsule drawn!";
+        showPaymentMessage(
+          "Payment verified and purchase fulfilled."
+        );
       }
 
-      paymentLink.style.display = "none";
-      paymentCopy.style.display = "none";
-      paymentCheck.style.display = "none";
+      paymentWallet.hidden = true;
+      paymentCopy.hidden = true;
+      paymentCheck.hidden = true;
+      paymentQr.hidden = true;
 
       return;
     }
 
-    if (data?.status === "pending") {
-      const expired =
-        activePurchase.expiresAt &&
-        Date.now() >
-        new Date(activePurchase.expiresAt).getTime();
-
-      if (expired) {
-        stopPaymentPolling();
-
-        paymentMessage.textContent =
-          "Payment window expired. " +
-          "Check payment status before starting another purchase.";
-      } else {
-        paymentMessage.textContent =
-          "Waiting for confirmed AWT payment...";
-      }
-
+    if (result.status === "pending") {
+      showPaymentMessage(
+        result.message ||
+        "Waiting for Solana payment confirmation..."
+      );
       return;
     }
 
-    paymentMessage.textContent =
-      data?.message ||
-      "Payment status unavailable.";
+    showPaymentMessage(
+      "Backend returned: " +
+      JSON.stringify(result),
+      true
+    );
 
   } catch (error) {
-    console.error(error);
+    console.error(
+      "PAYMENT VERIFICATION ERROR:",
+      error
+    );
 
-    paymentMessage.textContent =
-      "Verification unavailable: " +
-      error.message;
+    showPaymentMessage(
+      "VERIFY ERROR: " +
+      error.message,
+      true
+    );
 
   } finally {
     checkingPayment = false;
+    paymentCheck.disabled = false;
   }
 }
 
-/* PAYMENT BUTTONS */
+/* BUY CAPSULE */
 
-paymentCopy.addEventListener(
-  "click",
-  async () => {
-    if (!activePurchase) return;
+async function buyCapsule(tier) {
+  if (creatingPurchase) return;
 
+  if (!currentUser) {
+    closePurchase();
+    openSignIn();
+    return;
+  }
+
+  const existing =
+    loadPending();
+
+  if (
+    existing?.purchaseId &&
+    existing?.paymentUrl
+  ) {
     try {
-      await navigator.clipboard.writeText(
-        activePurchase.paymentUrl
+      validatePaymentResponse(
+        existing,
+        existing.tier
       );
 
-      paymentMessage.textContent =
-        "Solana Pay link copied.";
+      await showPayment(existing);
+      await verifyPayment();
 
-    } catch {
-      paymentMessage.textContent =
-        "Could not copy payment link.";
+    } catch (error) {
+      showPurchaseError(
+        "PENDING PURCHASE ERROR: " +
+        error.message
+      );
     }
+
+    return;
   }
-);
 
-paymentCheck.addEventListener(
-  "click",
-  () => {
-    void verifyPayment(true);
-  }
-);
+  creatingPurchase = true;
 
-paymentBack.addEventListener(
-  "click",
-  () => {
-    resetPaymentPanel();
-    // Preserve the pending payment so it
-    // can still be checked on return.
-  }
-);
+  tierButtons.forEach(
+    button => button.disabled = true
+  );
 
-/* PURCHASE CAPSULE */
+  purchaseStatus.textContent =
+    "Creating purchase with current AWT price...";
 
-tierButtons.forEach(button => {
-  button.addEventListener(
-    "click",
-    async () => {
-      const tier = button.dataset.tier;
+  try {
+    // Refresh the displayed price before purchase.
+    // The purchase function is still responsible
+    // for obtaining its own fresh price quote.
+    await refreshAWTPrice();
 
-      if (!currentUser) {
-        closePurchase();
-        openSignIn();
-        return;
-      }
-
-      // Prevent accidentally replacing an
-      // existing pending payment request.
-      const pending = loadPendingPurchase();
-
-      if (
-        pending?.purchaseId &&
-        pending?.paymentUrl
-      ) {
-        showPayment(pending);
-        void verifyPayment(false);
-        return;
-      }
-
-      purchaseStatus.textContent =
-        "Preparing " +
-        tier.toUpperCase() +
-        " capsule...";
-
-      tierButtons.forEach(
-        b => b.disabled = true
+    if (currentAWTPrice === null) {
+      throw new Error(
+        "Cannot retrieve the current AWT price."
       );
+    }
 
+    const result = await invokeFunction(
+      PURCHASE_FUNCTION,
+      { tier }
+    );
+
+    validatePaymentResponse(
+      result,
+      tier
+    );
+
+    const purchase = {
+      purchaseId: result.purchaseId,
+      tier,
+      priceUsd: result.priceUsd,
+      awtAmount: result.awtAmount,
+      awtUsd: result.awtUsd,
+      paymentUrl: result.paymentUrl,
+      reference: result.reference,
+      expiresAt: result.expiresAt
+    };
+
+    savePending(purchase);
+
+    purchaseStatus.textContent = "";
+
+    await showPayment(purchase);
+
+  } catch (error) {
+    console.error(
+      "PURCHASE CREATION ERROR:",
+      error
+    );
+
+    showPurchaseError(
+      "PURCHASE ERROR: " +
+      error.message
+    );
+
+  } finally {
+    creatingPurchase = false;
+
+    tierButtons.forEach(
+      button => button.disabled = false
+    );
+  }
+}
+
+/* PURCHASE MENU */
+
+async function openPurchase() {
+  purchaseOverlay.hidden = false;
+
+  purchaseStatus.textContent = "";
+  paymentPanel.hidden = true;
+
+  // Update CoinSniper price when menu opens.
+  void refreshAWTPrice();
+
+  if (currentUser) {
+    const pending =
+      loadPending();
+
+    if (
+      pending?.purchaseId &&
+      pending?.paymentUrl
+    ) {
       try {
-        const { data, error } =
-          await client.functions.invoke(
-            "purchase-capsule",
-            {
-              body: { tier }
-            }
-          );
+        validatePaymentResponse(
+          pending,
+          pending.tier
+        );
 
-        if (error) throw error;
-
-        if (
-          !data?.purchaseId ||
-          !data?.paymentUrl ||
-          !data?.awtAmount
-        ) {
-          throw new Error(
-            "Solana Pay instructions were not returned."
-          );
-        }
-
-        savePendingPurchase(data);
-        showPayment(data);
-
-        purchaseStatus.textContent = "";
+        await showPayment(pending);
+        await verifyPayment();
 
       } catch (error) {
-        console.error(error);
-
-        purchaseStatus.textContent =
-          "Purchase unavailable: " +
-          error.message;
-
-      } finally {
-        tierButtons.forEach(
-          b => b.disabled = false
+        showPurchaseError(
+          "PENDING PURCHASE ERROR: " +
+          error.message
         );
       }
     }
-  );
+  }
+}
+
+function closePurchase() {
+  stopPaymentPolling();
+
+  purchaseOverlay.hidden = true;
+  paymentPanel.hidden = true;
+  purchaseStatus.textContent = "";
+
+  payButton.focus();
+}
+
+payButton.onclick = () => {
+  void openPurchase();
+};
+
+purchaseClose.onclick =
+  closePurchase;
+
+purchaseOverlay.onclick = event => {
+  if (event.target === purchaseOverlay) {
+    closePurchase();
+  }
+};
+
+tierButtons.forEach(button => {
+  button.onclick = () => {
+    void buyCapsule(
+      button.dataset.tier
+    );
+  };
 });
 
-/* ESCAPE KEY */
+/* PAYMENT ACTIONS */
+
+paymentCopy.onclick = async () => {
+  if (!activePurchase) return;
+
+  try {
+    await navigator.clipboard.writeText(
+      activePurchase.paymentUrl
+    );
+
+    showPaymentMessage(
+      "Solana Pay link copied."
+    );
+
+  } catch (error) {
+    showPaymentMessage(
+      "Copy failed: " +
+      error.message,
+      true
+    );
+  }
+};
+
+paymentCheck.onclick = () => {
+  void verifyPayment();
+};
+
+paymentBack.onclick = () => {
+  stopPaymentPolling();
+
+  paymentPanel.hidden = true;
+  purchaseStatus.textContent = "";
+};
+
+/* ESCAPE */
 
 document.addEventListener(
   "keydown",
@@ -1173,6 +1764,26 @@ document.addEventListener(
       closePurchase();
     } else {
       closeSignIn();
+    }
+  }
+);
+
+/* START LIVE PRICE DISPLAY */
+
+// Initial lookup as soon as the index loads.
+void refreshAWTPrice();
+
+// Repeat lookup every 60 seconds.
+setInterval(() => {
+  void refreshAWTPrice();
+}, PRICE_REFRESH_MS);
+
+// Refresh when returning to the browser tab.
+document.addEventListener(
+  "visibilitychange",
+  () => {
+    if (!document.hidden) {
+      void refreshAWTPrice();
     }
   }
 );
