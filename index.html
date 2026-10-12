@@ -239,7 +239,7 @@ body {
   height: auto;
 }
 
-/* INVISIBLE BUTTONS OVER zcety.png */
+/* PURCHASE HOTSPOTS */
 
 .purchase-hotspot {
   position: absolute;
@@ -291,6 +291,54 @@ body {
   pointer-events: none;
 }
 
+/* SOLANA PAY PANEL */
+
+.payment-details {
+  position: absolute;
+  z-index: 4;
+  left: 9%;
+  right: 9%;
+  top: 15%;
+  padding: 15px;
+  border: 2px solid #bd3aff;
+  border-radius: 12px;
+  background: rgba(10, 5, 26, 0.97);
+  color: white;
+  text-align: center;
+  box-shadow: 0 0 24px #9b28e888;
+  font-size: clamp(11px, 1.8vw, 15px);
+}
+
+.payment-details[hidden] {
+  display: none;
+}
+
+.payment-details p {
+  overflow-wrap: anywhere;
+}
+
+.payment-details a,
+.payment-details button {
+  display: inline-block;
+  margin: 5px;
+  padding: 9px 12px;
+  background: #b82be8;
+  color: white;
+  border: 0;
+  border-radius: 7px;
+  font-weight: bold;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.payment-details .secondary-action {
+  background: #292044;
+}
+
+.payment-details button:disabled {
+  opacity: 0.5;
+}
+
 /* MOBILE */
 
 @media (max-width: 600px) {
@@ -332,6 +380,19 @@ body {
   .purchase-status {
     font-size: 8px;
   }
+
+  .payment-details {
+    padding: 8px;
+    top: 12%;
+    font-size: 10px;
+  }
+
+  .payment-details a,
+  .payment-details button {
+    padding: 6px;
+    margin: 3px;
+    font-size: 10px;
+  }
 }
 </style>
 </head>
@@ -358,7 +419,7 @@ body {
       <button
         class="hotspot pay-button"
         id="pay-button"
-        aria-label="Pay with AWT">
+        aria-label="Buy a capsule">
       </button>
 
       <button
@@ -395,31 +456,31 @@ body {
     class="purchase-modal"
     role="dialog"
     aria-modal="true"
-    aria-label="Sticker Mania Purchase"
+    aria-label="Sticker Mania Capsule Purchase"
   >
 
     <img
       class="purchase-art"
       src="assets/zcety.png"
-      alt="Sticker Mania Purchase Options"
+      alt="Sticker Mania Capsule Options"
     >
 
     <button
       class="purchase-hotspot purchase-common"
       data-tier="common"
-      aria-label="Buy Common for $0.50">
+      aria-label="Buy Common capsule for $0.50">
     </button>
 
     <button
       class="purchase-hotspot purchase-rare"
       data-tier="rare"
-      aria-label="Buy Rare for $1.00">
+      aria-label="Buy Rare capsule for $1.00">
     </button>
 
     <button
       class="purchase-hotspot purchase-legendary"
       data-tier="legendary"
-      aria-label="Buy Legendary for $3.00">
+      aria-label="Buy Legendary capsule for $3.00">
     </button>
 
     <button
@@ -427,6 +488,50 @@ body {
       id="purchase-close"
       aria-label="Close purchase">
     </button>
+
+    <!-- SOLANA PAY -->
+
+    <div
+      class="payment-details"
+      id="payment-details"
+      hidden
+    >
+      <strong id="payment-title">
+        SOLANA PAY
+      </strong>
+
+      <p id="payment-amount"></p>
+
+      <p
+        id="payment-message"
+        role="status">
+      </p>
+
+      <a
+        id="payment-link"
+        href="#">
+        OPEN SOLANA WALLET
+      </a>
+
+      <button
+        id="payment-copy"
+        type="button">
+        COPY PAYMENT LINK
+      </button>
+
+      <button
+        id="payment-check"
+        type="button">
+        CHECK PAYMENT
+      </button>
+
+      <button
+        id="payment-back"
+        class="secondary-action"
+        type="button">
+        BACK
+      </button>
+    </div>
 
     <p
       class="purchase-status"
@@ -456,17 +561,22 @@ body {
       Sticker Mania account.
     </p>
 
-    <button class="auth-action" id="discord-auth">
+    <button
+      class="auth-action"
+      id="discord-auth">
       Continue with Discord
     </button>
 
-    <p id="auth-status" role="status"></p>
+    <p
+      id="auth-status"
+      role="status">
+    </p>
 
   </div>
 </div>
 
 <script>
-/* SUPABASE CLIENT */
+/* SUPABASE */
 
 const SUPABASE_URL =
   "https://jqvnrdjrkdjgjbmqmbbl.supabase.co";
@@ -482,9 +592,15 @@ const client = window.supabase.createClient(
 const ACCOUNT_URL =
   new URL("account.html", window.location.href).href;
 
-let currentUser = null;
+const PENDING_KEY =
+  "sticker_mania_pending";
 
-/* DISCORD ACCOUNT */
+let currentUser = null;
+let activePurchase = null;
+let paymentTimer = null;
+let checkingPayment = false;
+
+/* ELEMENTS */
 
 const authOverlay =
   document.getElementById("auth-overlay");
@@ -500,6 +616,47 @@ const signinButton =
 
 const collectionAvatar =
   document.getElementById("collection-avatar");
+
+const purchaseOverlay =
+  document.getElementById("purchase-overlay");
+
+const purchaseStatus =
+  document.getElementById("purchase-status");
+
+const purchaseClose =
+  document.getElementById("purchase-close");
+
+const payButton =
+  document.getElementById("pay-button");
+
+const paymentDetails =
+  document.getElementById("payment-details");
+
+const paymentTitle =
+  document.getElementById("payment-title");
+
+const paymentAmount =
+  document.getElementById("payment-amount");
+
+const paymentMessage =
+  document.getElementById("payment-message");
+
+const paymentLink =
+  document.getElementById("payment-link");
+
+const paymentCopy =
+  document.getElementById("payment-copy");
+
+const paymentCheck =
+  document.getElementById("payment-check");
+
+const paymentBack =
+  document.getElementById("payment-back");
+
+const tierButtons =
+  document.querySelectorAll("[data-tier]");
+
+/* DISCORD ACCOUNT */
 
 function getDiscordUsername(user) {
   return (
@@ -659,110 +816,366 @@ authOverlay.onclick = event => {
   }
 };
 
-/* PURCHASE MODAL CONTROLS */
-
-const purchaseOverlay =
-  document.getElementById("purchase-overlay");
-
-const purchaseStatus =
-  document.getElementById("purchase-status");
-
-const purchaseClose =
-  document.getElementById("purchase-close");
-
-const payButton =
-  document.getElementById("pay-button");
+/* PURCHASE MODAL */
 
 function openPurchase() {
   purchaseStatus.textContent = "";
   purchaseOverlay.hidden = false;
+
+  const pending = loadPendingPurchase();
+
+  if (
+    pending?.purchaseId &&
+    pending?.paymentUrl
+  ) {
+    showPayment(pending);
+    void verifyPayment(false);
+  } else {
+    paymentDetails.hidden = true;
+  }
+
   purchaseClose.focus();
 }
 
 function closePurchase() {
+  stopPaymentPolling();
   purchaseOverlay.hidden = true;
   purchaseStatus.textContent = "";
   payButton.focus();
 }
 
-payButton.addEventListener("click", openPurchase);
+payButton.addEventListener(
+  "click",
+  openPurchase
+);
 
 purchaseClose.addEventListener(
   "click",
   closePurchase
 );
 
-purchaseOverlay.addEventListener("click", event => {
-  if (event.target === purchaseOverlay) {
-    closePurchase();
-  }
-});
-
-document.querySelectorAll("[data-tier]").forEach(button => {
-  button.addEventListener("click", async () => {
-    const tier = button.dataset.tier;
-
-    if (!currentUser) {
+purchaseOverlay.addEventListener(
+  "click",
+  event => {
+    if (event.target === purchaseOverlay) {
       closePurchase();
-      openSignIn();
+    }
+  }
+);
+
+/* PENDING PURCHASE STORAGE */
+
+function savePendingPurchase(purchase) {
+  sessionStorage.setItem(
+    PENDING_KEY,
+    JSON.stringify(purchase)
+  );
+}
+
+function loadPendingPurchase() {
+  try {
+    const stored =
+      sessionStorage.getItem(PENDING_KEY);
+
+    return stored
+      ? JSON.parse(stored)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearPendingPurchase() {
+  sessionStorage.removeItem(PENDING_KEY);
+}
+
+/* PAYMENT POLLING */
+
+function stopPaymentPolling() {
+  if (paymentTimer !== null) {
+    clearInterval(paymentTimer);
+    paymentTimer = null;
+  }
+}
+
+function startPaymentPolling() {
+  stopPaymentPolling();
+
+  paymentTimer = setInterval(() => {
+    void verifyPayment(false);
+  }, 6000);
+}
+
+function resetPaymentPanel() {
+  stopPaymentPolling();
+  paymentDetails.hidden = true;
+  activePurchase = null;
+  paymentMessage.textContent = "";
+}
+
+/* DISPLAY SOLANA PAY */
+
+function showPayment(purchase) {
+  activePurchase = purchase;
+
+  paymentTitle.textContent =
+    purchase.tier.toUpperCase() + " CAPSULE";
+
+  paymentAmount.textContent =
+    "$" +
+    Number(purchase.priceUsd).toFixed(2) +
+    " USD = " +
+    purchase.awtAmount +
+    " AWT";
+
+  paymentMessage.textContent =
+    "Complete payment in your Solana wallet.";
+
+  paymentLink.href = purchase.paymentUrl;
+
+  paymentLink.style.display = "inline-block";
+  paymentCopy.style.display = "inline-block";
+  paymentCheck.style.display = "inline-block";
+
+  paymentDetails.hidden = false;
+
+  startPaymentPolling();
+}
+
+/* VERIFY PAYMENT AND RECEIVE CAPSULE */
+
+async function verifyPayment(manual = true) {
+  if (
+    !activePurchase ||
+    checkingPayment ||
+    !currentUser
+  ) {
+    return;
+  }
+
+  checkingPayment = true;
+
+  const purchaseId = activePurchase.purchaseId;
+
+  if (manual) {
+    paymentMessage.textContent =
+      "Checking Solana payment...";
+  }
+
+  try {
+    const { data, error } =
+      await client.functions.invoke(
+        "verify-capsule",
+        {
+          body: { purchaseId }
+        }
+      );
+
+    if (error) throw error;
+
+    // Ignore an old request if the player
+    // has moved to a different purchase.
+    if (
+      !activePurchase ||
+      activePurchase.purchaseId !== purchaseId
+    ) {
       return;
     }
 
-    purchaseStatus.textContent =
-      "Preparing " + tier.toUpperCase() + " purchase...";
+    if (data?.status === "fulfilled") {
+      stopPaymentPolling();
+      clearPendingPurchase();
 
-    button.disabled = true;
+      const capsule = data.capsule;
+
+      if (capsule) {
+        paymentTitle.textContent =
+          "CAPSULE #" + capsule.id;
+
+        paymentMessage.textContent =
+          "YOU RECEIVED: " +
+          capsule.reward_name +
+          " (" +
+          capsule.reward_type.toUpperCase() +
+          ")";
+      } else {
+        paymentMessage.textContent =
+          "Payment verified. Capsule drawn!";
+      }
+
+      paymentLink.style.display = "none";
+      paymentCopy.style.display = "none";
+      paymentCheck.style.display = "none";
+
+      return;
+    }
+
+    if (data?.status === "pending") {
+      const expired =
+        activePurchase.expiresAt &&
+        Date.now() >
+        new Date(activePurchase.expiresAt).getTime();
+
+      if (expired) {
+        stopPaymentPolling();
+
+        paymentMessage.textContent =
+          "Payment window expired. " +
+          "Check payment status before starting another purchase.";
+      } else {
+        paymentMessage.textContent =
+          "Waiting for confirmed AWT payment...";
+      }
+
+      return;
+    }
+
+    paymentMessage.textContent =
+      data?.message ||
+      "Payment status unavailable.";
+
+  } catch (error) {
+    console.error(error);
+
+    paymentMessage.textContent =
+      "Verification unavailable: " +
+      error.message;
+
+  } finally {
+    checkingPayment = false;
+  }
+}
+
+/* PAYMENT BUTTONS */
+
+paymentCopy.addEventListener(
+  "click",
+  async () => {
+    if (!activePurchase) return;
 
     try {
-      const { data, error } =
-        await client.functions.invoke(
-          "purchase-sticker",
-          {
-            body: { tier }
-          }
-        );
+      await navigator.clipboard.writeText(
+        activePurchase.paymentUrl
+      );
 
-      if (error) throw error;
+      paymentMessage.textContent =
+        "Solana Pay link copied.";
 
-      if (!data || !data.paymentUrl) {
-        throw new Error(
-          "Payment instructions were not returned."
-        );
+    } catch {
+      paymentMessage.textContent =
+        "Could not copy payment link.";
+    }
+  }
+);
+
+paymentCheck.addEventListener(
+  "click",
+  () => {
+    void verifyPayment(true);
+  }
+);
+
+paymentBack.addEventListener(
+  "click",
+  () => {
+    resetPaymentPanel();
+    // Preserve the pending payment so it
+    // can still be checked on return.
+  }
+);
+
+/* PURCHASE CAPSULE */
+
+tierButtons.forEach(button => {
+  button.addEventListener(
+    "click",
+    async () => {
+      const tier = button.dataset.tier;
+
+      if (!currentUser) {
+        closePurchase();
+        openSignIn();
+        return;
+      }
+
+      // Prevent accidentally replacing an
+      // existing pending payment request.
+      const pending = loadPendingPurchase();
+
+      if (
+        pending?.purchaseId &&
+        pending?.paymentUrl
+      ) {
+        showPayment(pending);
+        void verifyPayment(false);
+        return;
       }
 
       purchaseStatus.textContent =
-        "Payment request ready.";
+        "Preparing " +
+        tier.toUpperCase() +
+        " capsule...";
 
-      // Open the verified payment request returned by Supabase.
-      // Never construct the payment amount on the frontend.
-      window.open(
-        data.paymentUrl,
-        "_blank",
-        "noopener,noreferrer"
+      tierButtons.forEach(
+        b => b.disabled = true
       );
 
-    } catch (error) {
-      console.error(error);
+      try {
+        const { data, error } =
+          await client.functions.invoke(
+            "purchase-capsule",
+            {
+              body: { tier }
+            }
+          );
 
-      purchaseStatus.textContent =
-        "Purchase unavailable: " + error.message;
-    } finally {
-      button.disabled = false;
+        if (error) throw error;
+
+        if (
+          !data?.purchaseId ||
+          !data?.paymentUrl ||
+          !data?.awtAmount
+        ) {
+          throw new Error(
+            "Solana Pay instructions were not returned."
+          );
+        }
+
+        savePendingPurchase(data);
+        showPayment(data);
+
+        purchaseStatus.textContent = "";
+
+      } catch (error) {
+        console.error(error);
+
+        purchaseStatus.textContent =
+          "Purchase unavailable: " +
+          error.message;
+
+      } finally {
+        tierButtons.forEach(
+          b => b.disabled = false
+        );
+      }
     }
-  });
+  );
 });
 
 /* ESCAPE KEY */
 
-document.addEventListener("keydown", event => {
-  if (event.key !== "Escape") return;
+document.addEventListener(
+  "keydown",
+  event => {
+    if (event.key !== "Escape") return;
 
-  if (!purchaseOverlay.hidden) {
-    closePurchase();
-  } else {
-    closeSignIn();
+    if (!purchaseOverlay.hidden) {
+      closePurchase();
+    } else {
+      closeSignIn();
+    }
   }
-});
+);
 </script>
 
 </body>
