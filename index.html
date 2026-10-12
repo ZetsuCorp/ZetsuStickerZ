@@ -773,73 +773,26 @@ function formatPrice(price) {
   }).format(price);
 }
 
-function displayPrice(price) {
-  const formatted = formatPrice(price);
-
-  priceMain.textContent = formatted;
-  pricePurchase.textContent = formatted;
-}
-
 async function refreshAWTPrice() {
-  if (priceRequest) {
-    return priceRequest;
-  }
-
-  priceRequest = (async () => {
-    const { data, error } =
-      await client.functions.invoke(
-        "awt-price",
-        {
-          method: "POST",
-          body: {
-            mint: AWT_MINT
-          }
-        }
-      );
-
-    if (error) {
-      throw new Error(
-        await functionError(error)
-      );
+  const { data, error } = await client.functions.invoke(
+    "awt-price",
+    {
+      method: "POST",
+      body: { mint: AWT_MINT }
     }
+  );
 
-    if (!data || data.success !== true) {
-      throw new Error(
-        data?.error || "Invalid price response"
-      );
-    }
+  if (error) throw error;
 
-    if (data.mint !== AWT_MINT) {
-      throw new Error("Incorrect AWT mint");
-    }
+  const publishedPrice = Number(data.priceUsd);
+  const formattedPrice = formatPrice(publishedPrice);
 
-    const price = Number(data.priceUsd);
-
-    if (
-      !Number.isFinite(price) ||
-      price <= 0
-    ) {
-      throw new Error("Invalid AWT price");
-    }
-
-    currentAWTPrice = price;
-
-    displayPrice(currentAWTPrice);
-
-    return currentAWTPrice;
-  })();
-
-  try {
-    return await priceRequest;
-  } finally {
-    priceRequest = null;
-  }
+  priceMain.textContent = formattedPrice;
+  pricePurchase.textContent = formattedPrice;
 }
 
 function updateAWTPrice() {
-  void refreshAWTPrice().catch(error => {
-    console.error("[AWT PRICE]", error);
-  });
+  void refreshAWTPrice();
 }
 
 /* DISCORD USER INFORMATION */
