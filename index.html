@@ -7,27 +7,24 @@
 <title>Sticker Mania</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="purchase.css">
 
 <style>
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
-html {
+html, body {
+  margin: 0;
   width: 100%;
   min-height: 100%;
 }
 
 body {
-  margin: 0;
   min-height: 100vh;
   min-height: 100dvh;
   background: #090515;
   color: white;
   font-family: Arial, sans-serif;
 }
-
-/* ARCADE */
 
 .arcade-viewport {
   width: 100%;
@@ -78,8 +75,6 @@ body {
   object-fit: contain;
 }
 
-/* DISPENSER */
-
 .dispenser-container {
   position: absolute;
   left: 30.5%;
@@ -89,11 +84,10 @@ body {
   pointer-events: none;
 }
 
-/* MACHINE BUTTONS */
-
 .hotspot {
   position: absolute;
   border: 0;
+  padding: 0;
   background: transparent;
   cursor: pointer;
   color: transparent;
@@ -117,11 +111,8 @@ body {
   top: 50.4%;
   width: 13%;
   height: 13.4%;
-  padding: 0;
   overflow: hidden;
 }
-
-/* COLLECTION BUTTON */
 
 .collection-button {
   display: none;
@@ -158,50 +149,46 @@ body {
   text-shadow: 0 0 5px #527cff;
 }
 
-/* SIGN IN MODAL */
-
-.overlay {
+.auth-overlay {
   display: none;
   position: fixed;
   inset: 0;
+  z-index: 20;
   background: #05020be8;
   align-items: center;
   justify-content: center;
-  z-index: 10;
   padding: 16px;
 }
 
-.overlay.open {
+.auth-overlay.open {
   display: flex;
 }
 
-.panel {
+.auth-panel {
   position: relative;
+  width: min(420px, 95vw);
   background: #211035;
   border: 2px solid #bd3aff;
   border-radius: 18px;
   padding: 32px;
-  width: min(420px, 95vw);
-  max-height: 90dvh;
-  overflow-y: auto;
   text-align: center;
   box-shadow: 0 0 30px #8c24d455;
 }
 
-.close {
+.auth-close {
   position: absolute;
   top: 10px;
   right: 15px;
+  border: 0;
   background: none;
-  border: none;
   color: white;
   font-size: 28px;
   cursor: pointer;
 }
 
-.action {
+.auth-action {
   background: #d837f2;
-  border: none;
+  border: 0;
   color: white;
   padding: 12px 22px;
   border-radius: 10px;
@@ -209,9 +196,8 @@ body {
   font-weight: bold;
 }
 
-.action:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.auth-action:disabled {
+  opacity: .5;
 }
 
 #auth-status {
@@ -219,12 +205,8 @@ body {
   overflow-wrap: anywhere;
 }
 
-/* MOBILE */
-
 @media (max-width: 600px) {
-  .arcade-viewport {
-    padding: 4px;
-  }
+  .arcade-viewport { padding: 4px; }
 
   .arcade-container {
     width: min(100%, calc(100dvh - 8px));
@@ -243,7 +225,7 @@ body {
     font-size: clamp(5px, 1.8vw, 9px);
   }
 
-  .panel {
+  .auth-panel {
     padding: 25px 18px;
   }
 }
@@ -252,11 +234,8 @@ body {
 
 <body>
 
-<!-- ARCADE -->
 <main class="arcade-viewport">
-
   <div class="arcade-container">
-
     <div class="game-container" id="game-container">
 
       <img
@@ -281,7 +260,7 @@ body {
         id="signin-button"
         aria-label="Sign in with Discord">
 
-        <span class="collection-button" id="collection-button">
+        <span class="collection-button">
           <img
             class="collection-avatar"
             id="collection-avatar"
@@ -295,16 +274,22 @@ body {
       </button>
 
     </div>
-
   </div>
-
 </main>
 
-<!-- SIGN IN MODAL -->
-<div class="overlay" id="overlay">
-  <div class="panel">
+<!-- PURCHASE MODAL IS LOADED HERE -->
+<div id="purchase-root"></div>
 
-    <button class="close" id="close" aria-label="Close">×</button>
+<!-- DISCORD SIGN IN -->
+<div class="auth-overlay" id="auth-overlay">
+  <div class="auth-panel">
+
+    <button
+      class="auth-close"
+      id="auth-close"
+      aria-label="Close">
+      ×
+    </button>
 
     <h2>SIGN IN</h2>
 
@@ -313,7 +298,7 @@ body {
       Sticker Mania account.
     </p>
 
-    <button class="action" id="discord-auth">
+    <button class="auth-action" id="discord-auth">
       Continue with Discord
     </button>
 
@@ -323,9 +308,6 @@ body {
 </div>
 
 <script>
-
-// SUPABASE CONFIGURATION
-
 const SUPABASE_URL =
   "https://jqvnrdjrkdjgjbmqmbbl.supabase.co";
 
@@ -337,137 +319,100 @@ const client = window.supabase.createClient(
   SUPABASE_KEY
 );
 
-const ACCOUNT_URL = new URL(
-  "account.html",
-  window.location.href
-).href;
-
-const PURCHASE_URL = new URL(
-  "purchase.html",
-  window.location.href
-).href;
+const ACCOUNT_URL =
+  new URL("account.html", location.href).href;
 
 let currentUser = null;
 
-// ELEMENTS
+const authOverlay =
+  document.getElementById("auth-overlay");
 
-const overlay = document.getElementById("overlay");
-const authButton = document.getElementById("discord-auth");
-const authStatus = document.getElementById("auth-status");
+const authButton =
+  document.getElementById("discord-auth");
 
-const signinButton = document.getElementById("signin-button");
-const collectionAvatar = document.getElementById("collection-avatar");
+const authStatus =
+  document.getElementById("auth-status");
 
-// DISCORD USER DATA
+const signinButton =
+  document.getElementById("signin-button");
+
+const collectionAvatar =
+  document.getElementById("collection-avatar");
 
 function getDiscordUsername(user) {
-  if (!user) return "Discord user";
-
   return (
-    user.user_metadata?.custom_claims?.global_name ||
-    user.user_metadata?.global_name ||
-    user.user_metadata?.preferred_username ||
-    user.user_metadata?.user_name ||
-    user.user_metadata?.full_name ||
-    user.user_metadata?.name ||
-    user.email ||
+    user?.user_metadata?.custom_claims?.global_name ||
+    user?.user_metadata?.global_name ||
+    user?.user_metadata?.preferred_username ||
+    user?.user_metadata?.user_name ||
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
+    user?.email ||
     "Discord user"
   );
 }
 
 function getDiscordId(user) {
-  if (!user) return null;
-
-  const discordIdentity = user.identities?.find(
-    identity => identity.provider === "discord"
+  const identity = user?.identities?.find(
+    item => item.provider === "discord"
   );
 
   return (
-    discordIdentity?.id ||
-    discordIdentity?.identity_data?.provider_id ||
-    user.user_metadata?.provider_id ||
-    user.user_metadata?.sub ||
+    identity?.id ||
+    identity?.identity_data?.provider_id ||
+    user?.user_metadata?.provider_id ||
+    user?.user_metadata?.sub ||
     null
   );
 }
 
-function getDiscordAvatar(user) {
-  if (!user) return "";
-
-  return user.user_metadata?.avatar_url || "";
-}
-
-// COLLECTION BUTTON
-
 function updateAccountButton() {
+  const signedIn = !!currentUser;
 
-  if (currentUser) {
+  signinButton.classList.toggle("signed-in", signedIn);
+  signinButton.setAttribute(
+    "aria-label",
+    signedIn ? "View My Collection" : "Sign in with Discord"
+  );
 
-    signinButton.classList.add("signed-in");
-    signinButton.setAttribute(
-      "aria-label",
-      "View My Collection"
-    );
+  const avatar = currentUser?.user_metadata?.avatar_url;
 
-    const avatarUrl = getDiscordAvatar(currentUser);
-
-    if (avatarUrl) {
-      collectionAvatar.src = avatarUrl;
-      collectionAvatar.style.display = "block";
-    } else {
-      collectionAvatar.removeAttribute("src");
-      collectionAvatar.style.display = "none";
-    }
-
+  if (signedIn && avatar) {
+    collectionAvatar.src = avatar;
+    collectionAvatar.style.display = "block";
   } else {
-
-    signinButton.classList.remove("signed-in");
-    signinButton.setAttribute(
-      "aria-label",
-      "Sign in with Discord"
-    );
-
     collectionAvatar.removeAttribute("src");
+    collectionAvatar.style.display = "none";
   }
 }
 
-// ACCOUNT SYNC
-
 async function syncStickerAccount(user) {
-
   if (!user) return;
-
-  const account = {
-    id: user.id,
-    discord_id: getDiscordId(user),
-    username: getDiscordUsername(user),
-    updated_at: new Date().toISOString()
-  };
 
   const { error } = await client
     .from("sticker_accounts")
-    .upsert(account, {
+    .upsert({
+      id: user.id,
+      discord_id: getDiscordId(user),
+      username: getDiscordUsername(user),
+      updated_at: new Date().toISOString()
+    }, {
       onConflict: "id"
     });
 
   if (error) throw error;
 }
 
-// SIGN IN MODAL
-
 function openSignIn() {
   authStatus.textContent = "";
-  overlay.classList.add("open");
+  authOverlay.classList.add("open");
 }
 
 function closeSignIn() {
-  overlay.classList.remove("open");
+  authOverlay.classList.remove("open");
 }
 
-// ACCOUNT PAGE
-
 async function goToAccount() {
-
   if (!currentUser) {
     openSignIn();
     return;
@@ -475,66 +420,47 @@ async function goToAccount() {
 
   try {
     await syncStickerAccount(currentUser);
+    location.href = ACCOUNT_URL;
   } catch (error) {
-
-    console.error("Account sync error:", error);
+    console.error(error);
     openSignIn();
-
     authStatus.textContent =
       "Account sync failed: " + error.message;
-
-    return;
   }
-
-  window.location.href = ACCOUNT_URL;
 }
 
-// DISCORD OAUTH
-
 authButton.onclick = async () => {
-
   authButton.disabled = true;
   authStatus.textContent = "";
 
   try {
-
-    const { error } =
-      await client.auth.signInWithOAuth({
-        provider: "discord",
-        options: {
-          redirectTo: ACCOUNT_URL,
-          scopes: "identify"
-        }
-      });
+    const { error } = await client.auth.signInWithOAuth({
+      provider: "discord",
+      options: {
+        redirectTo: ACCOUNT_URL,
+        scopes: "identify"
+      }
+    });
 
     if (error) throw error;
-
   } catch (error) {
-
     authStatus.textContent = error.message;
-    console.error("Discord auth error:", error);
-
   } finally {
     authButton.disabled = false;
   }
 };
 
-// MACHINE BUTTONS
-
 signinButton.onclick = goToAccount;
 
 document.getElementById("pay-button").onclick = () => {
-  window.location.href = PURCHASE_URL;
+  window.StickerPurchase.open();
 };
 
-// SESSION RESTORATION
-
 async function restoreSession() {
-
   const { data, error } = await client.auth.getUser();
 
   if (error) {
-    console.error("Session error:", error);
+    console.error(error);
     return;
   }
 
@@ -543,42 +469,32 @@ async function restoreSession() {
 }
 
 client.auth.onAuthStateChange((event, session) => {
-
   currentUser = session?.user || null;
   updateAccountButton();
 
   if (event === "SIGNED_IN" && currentUser) {
-
     const user = currentUser;
 
-    setTimeout(async () => {
-
-      try {
-        await syncStickerAccount(user);
-      } catch (error) {
-        console.error("Account sync error:", error);
-      }
-
+    setTimeout(() => {
+      syncStickerAccount(user).catch(console.error);
     }, 0);
   }
 });
 
 restoreSession();
 
-// CLOSE SIGN IN MODAL
-
-document.getElementById("close").onclick =
+document.getElementById("auth-close").onclick =
   closeSignIn;
 
-overlay.onclick = event => {
-  if (event.target === overlay) closeSignIn();
+authOverlay.onclick = event => {
+  if (event.target === authOverlay) closeSignIn();
 };
 
 document.addEventListener("keydown", event => {
   if (event.key === "Escape") closeSignIn();
 });
-
 </script>
 
+<script src="purchase.js"></script>
 </body>
 </html>
