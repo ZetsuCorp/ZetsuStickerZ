@@ -1,0 +1,268 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sticker Mania | Purchase</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: #090515;
+  color: white;
+  font-family: Arial, sans-serif;
+}
+
+.purchase-viewport {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 12px;
+  background: radial-gradient(
+    ellipse at center,
+    #24113f 0%,
+    #10071f 55%,
+    #05030c 100%
+  );
+}
+
+.purchase-container {
+  position: relative;
+  width: min(100%, 1100px);
+  margin: auto;
+}
+
+.purchase-art {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* TRANSPARENT BUTTONS OVER ARTWORK */
+
+.hotspot {
+  position: absolute;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.hotspot:focus-visible {
+  outline: 3px solid white;
+  border-radius: 12px;
+}
+
+/* PURCHASE BUTTON POSITIONS */
+
+.common-button {
+  left: 13%;
+  top: 65%;
+  width: 21%;
+  height: 11%;
+}
+
+.rare-button {
+  left: 40%;
+  top: 65%;
+  width: 20%;
+  height: 11%;
+}
+
+.legendary-button {
+  left: 67%;
+  top: 65%;
+  width: 20%;
+  height: 11%;
+}
+
+/* CLOSE BUTTON */
+
+.close-button {
+  position: absolute;
+  right: 8.3%;
+  top: 8.5%;
+  width: 5%;
+  height: 7%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  z-index: 3;
+}
+
+.close-button:focus-visible {
+  outline: 3px solid white;
+}
+
+/* STATUS MESSAGE */
+
+.purchase-status {
+  position: absolute;
+  left: 20%;
+  bottom: 4%;
+  width: 60%;
+  margin: 0;
+  color: white;
+  font-size: clamp(10px, 1.5vw, 15px);
+  text-align: center;
+  text-shadow: 0 0 8px #bd3aff;
+  pointer-events: none;
+}
+
+/* MOBILE */
+
+@media (max-width: 600px) {
+
+  .purchase-viewport {
+    padding: 4px;
+  }
+
+  .purchase-container {
+    width: 100%;
+  }
+
+  .purchase-status {
+    font-size: 9px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<main class="purchase-viewport">
+
+  <div class="purchase-container">
+
+    <!-- PURCHASE MODAL ARTWORK -->
+    <img
+      class="purchase-art"
+      src="assets/zcety.png"
+      alt="Sticker Mania Purchase Options"
+    >
+
+    <!-- COMMON -->
+    <button
+      class="hotspot common-button"
+      id="common-button"
+      aria-label="Purchase Common for $0.50">
+    </button>
+
+    <!-- RARE -->
+    <button
+      class="hotspot rare-button"
+      id="rare-button"
+      aria-label="Purchase Rare for $1.00">
+    </button>
+
+    <!-- LEGENDARY -->
+    <button
+      class="hotspot legendary-button"
+      id="legendary-button"
+      aria-label="Purchase Legendary for $3.00">
+    </button>
+
+    <!-- CLOSE -->
+    <button
+      class="close-button"
+      id="close-button"
+      aria-label="Return to Arcade">
+    </button>
+
+    <!-- STATUS -->
+    <p
+      class="purchase-status"
+      id="purchase-status"
+      role="status">
+    </p>
+
+  </div>
+
+</main>
+
+<script>
+
+// ========================================
+// PURCHASE TIERS
+// ========================================
+
+const PURCHASE_TIERS = {
+  common: 0.50,
+  rare: 1.00,
+  legendary: 3.00
+};
+
+// ========================================
+// ELEMENTS
+// ========================================
+
+const purchaseStatus =
+  document.getElementById("purchase-status");
+
+// ========================================
+// PURCHASE SELECTION
+// ========================================
+
+function selectPurchaseTier(tier) {
+
+  const price = PURCHASE_TIERS[tier];
+
+  if (price === undefined) return;
+
+  purchaseStatus.textContent =
+    `${tier.toUpperCase()} selected: $${price.toFixed(2)} USD. ` +
+    "Solana Pay setup is next.";
+
+}
+
+// ========================================
+// PURCHASE BUTTONS
+// ========================================
+
+document.getElementById("common-button").onclick = () => {
+  selectPurchaseTier("common");
+};
+
+document.getElementById("rare-button").onclick = () => {
+  selectPurchaseTier("rare");
+};
+
+document.getElementById("legendary-button").onclick = () => {
+  selectPurchaseTier("legendary");
+};
+
+// ========================================
+// RETURN TO ARCADE
+// ========================================
+
+function returnToArcade() {
+  window.location.href = "index.html";
+}
+
+document.getElementById("close-button").onclick =
+  returnToArcade;
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape") {
+    returnToArcade();
+  }
+});
+
+</script>
+
+</body>
+</html>
