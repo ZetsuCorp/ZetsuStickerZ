@@ -4,7 +4,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <title>Sticker Mania</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -15,36 +14,32 @@
   box-sizing: border-box;
 }
 
-html,
-body {
+html, body {
   margin: 0;
   width: 100%;
   min-height: 100%;
 }
 
 body {
-  min-height: 100vh;
   min-height: 100dvh;
+  font-family: Arial, sans-serif;
   background: #090515;
   color: white;
-  font-family: Arial, sans-serif;
 }
 
 /* VENDING MACHINE */
 
 .arcade-viewport {
-  width: 100%;
-  min-height: 100vh;
   min-height: 100dvh;
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
   padding: 12px;
   background: radial-gradient(
     ellipse at center,
-    #24113f 0%,
+    #24113f,
     #10071f 55%,
-    #05030c 100%
+    #05030c
   );
 }
 
@@ -54,8 +49,8 @@ body {
   aspect-ratio: 1 / 1;
   border: 2px solid #543184;
   border-radius: 18px;
-  background: #080412;
   overflow: hidden;
+  background: #080412;
 }
 
 .game-container {
@@ -80,48 +75,44 @@ body {
   pointer-events: none;
 }
 
-/* SMALL LIVE PRICE LABEL */
+/* SMALL PRICE LABEL */
 
 .awt-price-tag {
   position: absolute;
   z-index: 3;
-  top: 2%;
-  right: 2%;
+  top: 8px;
+  right: 8px;
   width: auto;
-  max-width: 32%;
   padding: 3px 6px;
-  background: rgba(9, 5, 26, 0.88);
-  border: 1px solid #a94bdf;
+  border: 1px solid #943bce;
   border-radius: 4px;
-  color: #67ffca;
-  font-size: clamp(8px, 1.3vw, 12px);
+  background: rgba(9, 5, 26, 0.87);
+  color: #64ffcb;
+  font-size: 11px;
   font-weight: bold;
   line-height: 1.2;
-  text-align: center;
   white-space: nowrap;
   pointer-events: none;
 }
 
-.awt-price-tag.unavailable {
-  color: #ffaaaa;
+.awt-price-tag.error {
+  color: #ffa3a3;
 }
 
-/* VENDING MACHINE BUTTONS */
+/* CLICKABLE AREAS */
 
 .hotspot {
   position: absolute;
   z-index: 2;
-  border: 0;
+  border: none;
   padding: 0;
   background: transparent;
   cursor: pointer;
-  color: transparent;
-  font-size: 0;
 }
 
 .hotspot:focus-visible,
 .purchase-hotspot:focus-visible {
-  outline: 3px solid white;
+  outline: 2px solid white;
 }
 
 .pay-button {
@@ -139,7 +130,7 @@ body {
   overflow: hidden;
 }
 
-/* COLLECTION BUTTON */
+/* COLLECTION */
 
 .collection-button {
   display: none;
@@ -149,9 +140,9 @@ body {
   border: 2px solid #527cff;
   border-radius: 10px;
   box-shadow: 0 0 10px #315dff;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  flex-direction: column;
   gap: 5px;
   padding: 5px;
 }
@@ -170,23 +161,26 @@ body {
 
 .collection-label {
   color: white;
-  font-size: clamp(6px, 1.3vw, 10px);
   font-weight: bold;
-  text-align: center;
+  font-size: clamp(6px, 1.3vw, 10px);
   text-shadow: 0 0 5px #527cff;
 }
 
-/* AUTHENTICATION */
+/* OVERLAYS */
+
+.auth-overlay,
+.purchase-overlay {
+  position: fixed;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
 
 .auth-overlay {
   display: none;
-  position: fixed;
-  inset: 0;
   z-index: 20;
-  background: rgba(5, 2, 11, 0.91);
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
+  background: rgba(5, 2, 11, 0.92);
 }
 
 .auth-overlay.open {
@@ -196,33 +190,32 @@ body {
 .auth-panel {
   position: relative;
   width: min(420px, 95vw);
-  background: #211035;
+  padding: 30px;
   border: 2px solid #bd3aff;
   border-radius: 18px;
-  padding: 32px;
+  background: #211035;
   text-align: center;
-  box-shadow: 0 0 30px #8c24d455;
 }
 
 .auth-close {
   position: absolute;
-  top: 10px;
-  right: 15px;
-  border: 0;
+  top: 8px;
+  right: 14px;
   background: none;
+  border: 0;
   color: white;
   font-size: 28px;
   cursor: pointer;
 }
 
 .auth-action {
-  background: #d837f2;
   border: 0;
-  color: white;
-  padding: 12px 22px;
   border-radius: 10px;
-  cursor: pointer;
+  background: #d837f2;
+  padding: 12px 22px;
+  color: white;
   font-weight: bold;
+  cursor: pointer;
 }
 
 .auth-action:disabled {
@@ -234,17 +227,12 @@ body {
   overflow-wrap: anywhere;
 }
 
-/* CAPSULE PURCHASE MENU */
+/* CAPSULE MENU */
 
 .purchase-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 15;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px;
-  background: rgba(5, 2, 11, 0.85);
+  z-index: 15;
+  background: rgba(5, 2, 11, 0.86);
 }
 
 .purchase-overlay[hidden],
@@ -269,10 +257,30 @@ body {
   height: auto;
 }
 
+/* SMALL PURCHASE PRICE LABEL */
+
+.purchase-price-tag {
+  position: absolute;
+  z-index: 3;
+  top: 8px;
+  left: 8px;
+  padding: 3px 6px;
+  border: 1px solid #943bce;
+  border-radius: 4px;
+  background: rgba(9, 5, 26, 0.87);
+  color: #64ffcb;
+  font-size: 11px;
+  font-weight: bold;
+  pointer-events: none;
+}
+
+.purchase-price-tag.error {
+  color: #ffa3a3;
+}
+
 .purchase-hotspot {
   position: absolute;
   z-index: 2;
-  padding: 0;
   border: 0;
   background: transparent;
   cursor: pointer;
@@ -312,59 +320,36 @@ body {
 
 .purchase-status {
   position: absolute;
-  left: 12%;
+  left: 10%;
   bottom: 2%;
-  width: 76%;
+  width: 80%;
   margin: 0;
   color: white;
   font-size: clamp(9px, 1.4vw, 13px);
   text-align: center;
-  text-shadow: 0 0 8px #bd3aff;
+  text-shadow: 0 0 7px #bd3aff;
   overflow-wrap: anywhere;
   pointer-events: none;
 }
 
-/* SMALL PRICE INSIDE PURCHASE MENU */
-
-.purchase-awt-price {
-  position: absolute;
-  z-index: 3;
-  top: 2%;
-  left: 2%;
-  padding: 3px 6px;
-  border: 1px solid #a94bdf;
-  border-radius: 4px;
-  background: rgba(9, 5, 26, 0.88);
-  color: #67ffca;
-  font-size: clamp(8px, 1.3vw, 12px);
-  font-weight: bold;
-  line-height: 1.2;
-  white-space: nowrap;
-  pointer-events: none;
-}
-
-.purchase-awt-price.unavailable {
-  color: #ffaaaa;
-}
-
-/* SOLANA PAY */
+/* SOLANA PAY PANEL */
 
 .payment-panel {
   position: absolute;
-  inset: 4%;
   z-index: 5;
-  background: rgba(9, 5, 22, 0.98);
+  inset: 4%;
   border: 2px solid #bd3aff;
   border-radius: 12px;
   padding: 12px;
-  text-align: center;
   overflow-y: auto;
+  background: rgba(9, 5, 22, 0.98);
   box-shadow: 0 0 25px #bd3aff77;
+  text-align: center;
 }
 
 .payment-panel h2 {
+  font-size: clamp(16px, 2.4vw, 23px);
   margin: 6px 0;
-  font-size: clamp(15px, 2.5vw, 23px);
 }
 
 .payment-panel p {
@@ -373,26 +358,26 @@ body {
 }
 
 .payment-amount {
-  color: #f6d2ff;
   font-size: clamp(16px, 3vw, 24px);
   font-weight: bold;
+  color: #f6d2ff;
+  overflow-wrap: anywhere;
 }
 
 #payment-qr {
   display: block;
   width: min(42%, 180px);
   height: auto;
-  aspect-ratio: 1;
   margin: 10px auto;
-  background: white;
   padding: 7px;
+  background: white;
   border-radius: 8px;
 }
 
 .payment-actions {
   display: flex;
-  justify-content: center;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
 }
 
@@ -400,13 +385,13 @@ body {
 .payment-actions a {
   display: inline-block;
   padding: 9px 12px;
-  background: #ae2bdd;
   border: 0;
   border-radius: 7px;
+  background: #ae2bdd;
   color: white;
-  text-decoration: none;
   font-size: 12px;
   font-weight: bold;
+  text-decoration: none;
   cursor: pointer;
 }
 
@@ -436,31 +421,29 @@ body {
     border-radius: 8px;
   }
 
-  .awt-price-tag {
+  .awt-price-tag,
+  .purchase-price-tag {
+    top: 4px;
     padding: 2px 4px;
-    border-radius: 3px;
     font-size: 8px;
   }
 
-  .purchase-awt-price {
-    padding: 2px 4px;
-    border-radius: 3px;
-    font-size: 8px;
+  .awt-price-tag {
+    right: 4px;
+  }
+
+  .purchase-price-tag {
+    left: 4px;
   }
 
   .collection-button {
-    border-radius: 5px;
-    border-width: 1px;
     gap: 2px;
     padding: 2px;
+    border-radius: 5px;
   }
 
   .collection-label {
-    font-size: clamp(5px, 1.8vw, 9px);
-  }
-
-  .auth-panel {
-    padding: 25px 18px;
+    font-size: 6px;
   }
 
   .purchase-overlay {
@@ -469,8 +452,8 @@ body {
 
   .purchase-modal {
     width: min(98vw, 132dvh);
-    border-width: 1px;
     border-radius: 7px;
+    border-width: 1px;
   }
 
   .purchase-status {
@@ -481,10 +464,6 @@ body {
     padding: 7px;
   }
 
-  .payment-panel p {
-    margin: 6px 0;
-  }
-
   #payment-qr {
     width: min(35%, 130px);
     margin: 5px auto;
@@ -492,8 +471,8 @@ body {
 
   .payment-actions button,
   .payment-actions a {
-    padding: 6px;
     font-size: 10px;
+    padding: 6px;
   }
 }
 </style>
@@ -505,24 +484,20 @@ body {
 
 <main class="arcade-viewport">
   <div class="arcade-container">
-
     <div class="game-container" id="game-container">
 
       <img
         class="machine"
         src="assets/ZetsuStickerZ.png"
-        alt="Sticker Mania Machine"
+        alt="Sticker Mania Vending Machine"
       >
 
-      <!-- SMALL LIVE PRICE LABEL -->
-
-      <div
+      <span
         class="awt-price-tag"
         id="awt-price-main"
-        aria-label="AWT price in USD"
-        aria-live="polite">
+        title="AWT / USD">
         ...
-      </div>
+      </span>
 
       <div
         class="dispenser-container"
@@ -538,21 +513,20 @@ body {
       <button
         class="hotspot signin-button"
         id="signin-button"
-        aria-label="Sign in with Discord">
+        aria-label="Discord login or collection">
 
         <span class="collection-button">
-
           <img
             class="collection-avatar"
             id="collection-avatar"
-            alt="Discord Profile"
+            alt="Profile"
           >
 
           <span class="collection-label">
             MY COLLECTION
           </span>
-
         </span>
+
       </button>
 
     </div>
@@ -570,45 +544,43 @@ body {
     class="purchase-modal"
     role="dialog"
     aria-modal="true"
-    aria-label="Sticker Mania Capsule Purchase">
+    aria-label="Capsule purchase">
 
     <img
       class="purchase-art"
       src="assets/zcety.png"
-      alt="Capsule Purchase Options"
+      alt="Select your capsule"
     >
 
-    <!-- SMALL PRICE LABEL -->
-
-    <div
-      class="purchase-awt-price"
+    <span
+      class="purchase-price-tag"
       id="awt-price-purchase"
-      aria-label="AWT price in USD">
+      title="AWT / USD">
       ...
-    </div>
+    </span>
 
     <button
       class="purchase-hotspot purchase-common"
       data-tier="common"
-      aria-label="Buy Common Capsule for $0.50">
+      aria-label="Common Capsule $0.50">
     </button>
 
     <button
       class="purchase-hotspot purchase-rare"
       data-tier="rare"
-      aria-label="Buy Rare Capsule for $1.00">
+      aria-label="Rare Capsule $1">
     </button>
 
     <button
       class="purchase-hotspot purchase-legendary"
       data-tier="legendary"
-      aria-label="Buy Legendary Capsule for $3.00">
+      aria-label="Legendary Capsule $3">
     </button>
 
     <button
       class="purchase-hotspot purchase-close"
       id="purchase-close"
-      aria-label="Close purchase menu">
+      aria-label="Close">
     </button>
 
     <p
@@ -617,16 +589,14 @@ body {
       role="status">
     </p>
 
-    <!-- PAYMENT PANEL -->
+    <!-- SOLANA PAY -->
 
     <section
       class="payment-panel"
       id="payment-panel"
       hidden>
 
-      <h2 id="payment-title">
-        SOLANA PAY
-      </h2>
+      <h2 id="payment-title">SOLANA PAY</h2>
 
       <p id="payment-usd"></p>
 
@@ -637,28 +607,19 @@ body {
 
       <canvas id="payment-qr"></canvas>
 
-      <p
-        id="payment-message"
-        role="status">
-      </p>
+      <p id="payment-message" role="status"></p>
 
       <div class="payment-actions">
 
-        <a
-          id="payment-wallet"
-          href="#">
+        <a id="payment-wallet" href="#">
           OPEN WALLET
         </a>
 
-        <button
-          id="payment-copy"
-          type="button">
+        <button id="payment-copy" type="button">
           COPY LINK
         </button>
 
-        <button
-          id="payment-check"
-          type="button">
+        <button id="payment-check" type="button">
           CHECK PAYMENT
         </button>
 
@@ -676,12 +637,9 @@ body {
   </div>
 </div>
 
-<!-- DISCORD LOGIN -->
+<!-- DISCORD SIGN IN -->
 
-<div
-  class="auth-overlay"
-  id="auth-overlay">
-
+<div class="auth-overlay" id="auth-overlay">
   <div class="auth-panel">
 
     <button
@@ -694,8 +652,8 @@ body {
     <h2>SIGN IN</h2>
 
     <p>
-      Sign in with Discord to access your
-      Sticker Mania account.
+      Sign in with Discord to access
+      your Sticker Mania account.
     </p>
 
     <button
@@ -704,10 +662,7 @@ body {
       Continue with Discord
     </button>
 
-    <p
-      id="auth-status"
-      role="status">
-    </p>
+    <p id="auth-status" role="status"></p>
 
   </div>
 </div>
@@ -727,58 +682,50 @@ const AWT_MINT =
 const RECEIVER =
   "CT1fjjJMaNb2jgwH7rnuyiLcASmtmdRzSw7tQv8VXaRK";
 
-const CAPSULE_PRICES = Object.freeze({
+const CAPSULE_PRICES = {
   common: 0.50,
   rare: 1.00,
   legendary: 3.00
-});
+};
 
-const PRICE_FUNCTION = "awt-price";
-const PURCHASE_FUNCTION = "purchase-capsule";
-const VERIFY_FUNCTION = "verify-capsule";
+const ACCOUNT_URL =
+  new URL("account.html", window.location.href).href;
 
 const PRICE_REFRESH_MS = 60000;
 const PAYMENT_CHECK_MS = 6000;
-
-const PENDING_KEY = "sticker_mania_pending";
 
 const client = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_KEY
 );
 
-const ACCOUNT_URL =
-  new URL("account.html", window.location.href).href;
+const $ = id => document.getElementById(id);
 
 let currentUser = null;
 let activePurchase = null;
 let paymentTimer = null;
 
-let checkingPayment = false;
-let creatingPurchase = false;
-
+let pricePromise = null;
 let currentAWTPrice = null;
-let priceRequestRunning = false;
 
-const $ = id => document.getElementById(id);
+let purchasing = false;
+let checkingPayment = false;
 
 /* ELEMENTS */
 
-const authOverlay = $("auth-overlay");
-const authButton = $("discord-auth");
-const authStatus = $("auth-status");
+const priceMain = $("awt-price-main");
+const pricePurchase = $("awt-price-purchase");
 
+const payButton = $("pay-button");
 const signinButton = $("signin-button");
+
 const collectionAvatar = $("collection-avatar");
 
 const purchaseOverlay = $("purchase-overlay");
+const purchaseClose = $("purchase-close");
 const purchaseStatus = $("purchase-status");
 
-const payButton = $("pay-button");
-const purchaseClose = $("purchase-close");
-
 const paymentPanel = $("payment-panel");
-
 const paymentTitle = $("payment-title");
 const paymentUsd = $("payment-usd");
 const paymentAwt = $("payment-awt");
@@ -790,236 +737,143 @@ const paymentCopy = $("payment-copy");
 const paymentCheck = $("payment-check");
 const paymentBack = $("payment-back");
 
-const awtPriceMain = $("awt-price-main");
-const awtPricePurchase = $("awt-price-purchase");
+const authOverlay = $("auth-overlay");
+const authButton = $("discord-auth");
+const authStatus = $("auth-status");
 
 const tierButtons = [
   ...document.querySelectorAll("[data-tier]")
 ];
 
-/* READ ACTUAL EDGE FUNCTION ERRORS */
+/* ERROR HANDLING */
 
-async function getFunctionError(error) {
-  if (!error) {
-    return "Unknown error";
-  }
+async function functionError(error) {
+  let message = error?.message || "Unknown error";
 
-  let message = error.message || String(error);
-  const context = error.context;
-
-  if (context instanceof Response) {
-    const status = context.status;
+  if (error?.context instanceof Response) {
+    const response = error.context;
 
     try {
-      const body = await context.clone().text();
+      const text = await response.clone().text();
 
-      if (body) {
-        try {
-          const parsed = JSON.parse(body);
+      try {
+        const json = JSON.parse(text);
 
-          message =
-            parsed.error ||
-            parsed.message ||
-            parsed.msg ||
-            JSON.stringify(parsed);
-
-        } catch {
-          message = body;
-        }
+        message =
+          json.error ||
+          json.message ||
+          JSON.stringify(json);
+      } catch {
+        message = text || message;
       }
+    } catch {}
 
-    } catch (readError) {
-      console.error(
-        "Could not read error response:",
-        readError
-      );
-    }
-
-    return "HTTP " + status + ": " + message;
-  }
-
-  if (context?.message) {
-    message += ": " + context.message;
+    return `HTTP ${response.status}: ${message}`;
   }
 
   return message;
 }
 
-/* LIVE AWT PRICE DISPLAY */
+/* LIVE PRICE */
 
-function formatAWTPrice(price) {
+function formatPrice(price) {
   return "$" + new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 12
   }).format(price);
 }
 
-function setAWTPriceDisplay(
-  value,
-  unavailable = false
-) {
-  for (const element of [
-    awtPriceMain,
-    awtPricePurchase
-  ]) {
-    element.textContent = value;
-
-    element.classList.toggle(
-      "unavailable",
-      unavailable
-    );
+function displayPrice(value, error = false) {
+  for (const label of [priceMain, pricePurchase]) {
+    label.textContent = value;
+    label.classList.toggle("error", error);
   }
 }
 
 async function refreshAWTPrice() {
-  if (priceRequestRunning) {
-    return currentAWTPrice;
+  if (pricePromise) {
+    return pricePromise;
   }
 
-  priceRequestRunning = true;
-
-  try {
-    const { data, error } =
-      await client.functions.invoke(
-        PRICE_FUNCTION,
+  pricePromise = (async () => {
+    try {
+      const { data, error } = await client.functions.invoke(
+        "awt-price",
         {
           method: "POST",
-          body: {
-            mint: AWT_MINT
-          }
+          body: { mint: AWT_MINT }
         }
       );
 
-    if (error) {
-      throw new Error(
-        await getFunctionError(error)
-      );
+      if (error) {
+        throw new Error(await functionError(error));
+      }
+
+      if (!data || data.success !== true) {
+        throw new Error(data?.error || "Price lookup failed");
+      }
+
+      if (data.mint !== AWT_MINT) {
+        throw new Error("Wrong AWT mint");
+      }
+
+      const price = Number(data.priceUsd);
+
+      if (!Number.isFinite(price) || price <= 0) {
+        throw new Error("Invalid price");
+      }
+
+      currentAWTPrice = price;
+      displayPrice(formatPrice(price));
+
+      return price;
+    } catch (error) {
+      currentAWTPrice = null;
+      displayPrice("N/A", true);
+
+      console.error("[AWT PRICE]", error.message);
+
+      return null;
     }
+  })();
 
-    if (!data || data.success !== true) {
-      throw new Error(
-        data?.error || "Price lookup failed"
-      );
-    }
-
-    if (data.mint !== AWT_MINT) {
-      throw new Error(
-        "Price belongs to the wrong token"
-      );
-    }
-
-    const price = Number(data.priceUsd);
-
-    if (
-      !Number.isFinite(price) ||
-      price <= 0
-    ) {
-      throw new Error(
-        "Invalid AWT price"
-      );
-    }
-
-    currentAWTPrice = price;
-
-    setAWTPriceDisplay(
-      formatAWTPrice(price)
-    );
-
-    console.log(
-      "[AWT PRICE]",
-      price,
-      "USD"
-    );
-
-    return price;
-
-  } catch (error) {
-    currentAWTPrice = null;
-
-    setAWTPriceDisplay(
-      "N/A",
-      true
-    );
-
-    console.error(
-      "[AWT PRICE ERROR]",
-      error.message
-    );
-
-    return null;
-
+  try {
+    return await pricePromise;
   } finally {
-    priceRequestRunning = false;
+    pricePromise = null;
   }
 }
 
-/* PURCHASE AND PAYMENT MESSAGES */
+/* DISCORD AUTHENTICATION */
 
-function showPurchaseError(message) {
-  purchaseStatus.textContent = message;
-  purchaseStatus.title = message;
-
-  console.error(
-    "[STICKER MANIA]",
-    message
-  );
-}
-
-function showPaymentMessage(
-  message,
-  isError = false
-) {
-  paymentMessage.textContent = message;
-
-  paymentMessage.classList.toggle(
-    "payment-error",
-    isError
-  );
-}
-
-/* DISCORD ACCOUNT */
-
-function getDiscordUsername(user) {
+function discordName(user) {
   return (
-    user?.user_metadata?.custom_claims?.global_name ||
     user?.user_metadata?.global_name ||
     user?.user_metadata?.preferred_username ||
     user?.user_metadata?.user_name ||
     user?.user_metadata?.full_name ||
     user?.user_metadata?.name ||
-    user?.email ||
-    "Discord user"
+    "Discord User"
   );
 }
 
-function getDiscordId(user) {
+function discordId(user) {
   const identity = user?.identities?.find(
-    item => item.provider === "discord"
+    identity => identity.provider === "discord"
   );
 
   return (
     identity?.id ||
     identity?.identity_data?.provider_id ||
     user?.user_metadata?.provider_id ||
-    user?.user_metadata?.sub ||
     null
   );
 }
 
-function updateAccountButton() {
+function updateLoginDisplay() {
   const signedIn = !!currentUser;
 
-  signinButton.classList.toggle(
-    "signed-in",
-    signedIn
-  );
-
-  signinButton.setAttribute(
-    "aria-label",
-    signedIn
-      ? "View My Collection"
-      : "Sign in with Discord"
-  );
+  signinButton.classList.toggle("signed-in", signedIn);
 
   const avatar =
     currentUser?.user_metadata?.avatar_url;
@@ -1027,61 +881,38 @@ function updateAccountButton() {
   if (signedIn && avatar) {
     collectionAvatar.src = avatar;
     collectionAvatar.style.display = "block";
-
   } else {
     collectionAvatar.removeAttribute("src");
     collectionAvatar.style.display = "none";
   }
 }
 
-async function syncStickerAccount(user) {
+async function syncAccount(user) {
   if (!user) return;
 
   const { error } = await client
     .from("sticker_accounts")
     .upsert({
       id: user.id,
-      discord_id: getDiscordId(user),
-      username: getDiscordUsername(user),
+      discord_id: discordId(user),
+      username: discordName(user),
       updated_at: new Date().toISOString()
     }, {
       onConflict: "id"
     });
 
   if (error) {
-    throw error;
+    console.error("[ACCOUNT SYNC]", error.message);
   }
 }
 
-function openSignIn() {
+function openAuth() {
   authStatus.textContent = "";
   authOverlay.classList.add("open");
 }
 
-function closeSignIn() {
+function closeAuth() {
   authOverlay.classList.remove("open");
-}
-
-async function goToAccount() {
-  if (!currentUser) {
-    openSignIn();
-    return;
-  }
-
-  try {
-    await syncStickerAccount(currentUser);
-
-    window.location.href = ACCOUNT_URL;
-
-  } catch (error) {
-    console.error(error);
-
-    openSignIn();
-
-    authStatus.textContent =
-      "Account sync failed: " +
-      error.message;
-  }
 }
 
 authButton.onclick = async () => {
@@ -1089,191 +920,184 @@ authButton.onclick = async () => {
   authStatus.textContent = "";
 
   try {
-    const { error } =
-      await client.auth.signInWithOAuth({
-        provider: "discord",
-        options: {
-          redirectTo: ACCOUNT_URL,
-          scopes: "identify"
-        }
-      });
+    const { error } = await client.auth.signInWithOAuth({
+      provider: "discord",
+      options: {
+        redirectTo: ACCOUNT_URL,
+        scopes: "identify"
+      }
+    });
 
-    if (error) {
-      throw error;
-    }
-
+    if (error) throw error;
   } catch (error) {
     authStatus.textContent = error.message;
-
   } finally {
     authButton.disabled = false;
   }
 };
 
-signinButton.onclick = goToAccount;
-
-async function restoreSession() {
-  const { data, error } =
-    await client.auth.getUser();
-
-  if (error) {
-    console.error(
-      "Session error:",
-      error
-    );
-
+signinButton.onclick = () => {
+  if (!currentUser) {
+    openAuth();
     return;
   }
 
-  currentUser = data.user || null;
+  window.location.href = ACCOUNT_URL;
+};
 
-  updateAccountButton();
-}
-
-client.auth.onAuthStateChange(
-  (event, session) => {
-    const previousId = currentUser?.id;
-
-    currentUser = session?.user || null;
-
-    updateAccountButton();
-
-    if (
-      previousId &&
-      previousId !== currentUser?.id
-    ) {
-      stopPaymentPolling();
-
-      activePurchase = null;
-      paymentPanel.hidden = true;
-    }
-
-    if (
-      event === "SIGNED_IN" &&
-      currentUser
-    ) {
-      const user = currentUser;
-
-      setTimeout(() => {
-        syncStickerAccount(user).catch(
-          console.error
-        );
-      }, 0);
-    }
-  }
-);
-
-void restoreSession();
-
-$("auth-close").onclick = closeSignIn;
+$("auth-close").onclick = closeAuth;
 
 authOverlay.onclick = event => {
   if (event.target === authOverlay) {
-    closeSignIn();
+    closeAuth();
   }
 };
 
-/* AUTHENTICATED EDGE FUNCTIONS */
+client.auth.onAuthStateChange((event, session) => {
+  currentUser = session?.user || null;
 
-async function invokeFunction(name, body) {
-  const {
-    data: sessionData,
-    error: sessionError
-  } = await client.auth.getSession();
+  updateLoginDisplay();
 
-  if (sessionError) {
-    throw sessionError;
+  if (event === "SIGNED_IN" && currentUser) {
+    const user = currentUser;
+
+    setTimeout(() => {
+      void syncAccount(user);
+    }, 0);
+  }
+});
+
+async function restoreUser() {
+  const { data, error } = await client.auth.getUser();
+
+  if (error) {
+    console.error("[SESSION]", error.message);
   }
 
-  const token =
-    sessionData.session?.access_token;
+  currentUser = data?.user || null;
+  updateLoginDisplay();
+}
+
+void restoreUser();
+
+/* AUTHENTICATED EDGE FUNCTION */
+
+async function invoke(name, body) {
+  const { data: sessionData, error: sessionError } =
+    await client.auth.getSession();
+
+  if (sessionError) throw sessionError;
+
+  const token = sessionData.session?.access_token;
 
   if (!token) {
-    throw new Error(
-      "Discord session missing. Sign in again."
-    );
+    throw new Error("Sign in with Discord");
   }
 
-  const { data, error } =
-    await client.functions.invoke(name, {
+  const { data, error } = await client.functions.invoke(
+    name,
+    {
+      method: "POST",
       body,
       headers: {
         Authorization: "Bearer " + token
       }
-    });
+    }
+  );
 
   if (error) {
-    throw new Error(
-      await getFunctionError(error)
-    );
+    throw new Error(await functionError(error));
   }
 
-  if (
-    !data ||
-    typeof data !== "object"
-  ) {
-    throw new Error(
-      name + " returned an invalid response."
-    );
-  }
-
-  if (data.error) {
-    throw new Error(
-      String(data.error)
-    );
+  if (!data || data.error) {
+    throw new Error(data?.error || "Invalid function response");
   }
 
   return data;
 }
 
-/* PURCHASE STORAGE */
+/* PENDING PURCHASE */
 
-function pendingStorageKey() {
+function pendingKey() {
   return (
-    PENDING_KEY + "_" +
+    "sticker_mania_pending_" +
     (currentUser?.id || "anonymous")
   );
 }
 
 function savePending(purchase) {
   localStorage.setItem(
-    pendingStorageKey(),
+    pendingKey(),
     JSON.stringify(purchase)
   );
 }
 
-function loadPending() {
+function readPending() {
   try {
-    const raw = localStorage.getItem(
-      pendingStorageKey()
-    );
-
-    return raw
-      ? JSON.parse(raw)
-      : null;
-
+    const raw = localStorage.getItem(pendingKey());
+    return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 }
 
 function clearPending() {
-  localStorage.removeItem(
-    pendingStorageKey()
-  );
+  localStorage.removeItem(pendingKey());
 }
 
-/* PAYMENT TIMER */
+/* PURCHASE VALIDATION */
 
-function stopPaymentPolling() {
-  if (paymentTimer !== null) {
+function validatePurchase(data, tier) {
+  if (
+    !data.purchaseId ||
+    !data.reference ||
+    !data.paymentUrl
+  ) {
+    throw new Error("Incomplete purchase response");
+  }
+
+  if (
+    Number(data.priceUsd) !==
+    CAPSULE_PRICES[tier]
+  ) {
+    throw new Error("Incorrect capsule price");
+  }
+
+  const amount = Number(data.awtAmount);
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error("Invalid AWT payment amount");
+  }
+
+  const url = new URL(data.paymentUrl);
+
+  if (
+    url.protocol !== "solana:" ||
+    url.pathname !== RECEIVER ||
+    url.searchParams.get("spl-token") !== AWT_MINT ||
+    url.searchParams.get("reference") !== data.reference ||
+    Number(url.searchParams.get("amount")) !== amount
+  ) {
+    throw new Error("Invalid Solana Pay payment request");
+  }
+}
+
+/* PAYMENT DISPLAY */
+
+function paymentStatus(message, error = false) {
+  paymentMessage.textContent = message;
+  paymentMessage.classList.toggle("payment-error", error);
+}
+
+function stopPolling() {
+  if (paymentTimer) {
     clearInterval(paymentTimer);
     paymentTimer = null;
   }
 }
 
-function startPaymentPolling() {
-  stopPaymentPolling();
+function startPolling() {
+  stopPolling();
 
   paymentTimer = setInterval(() => {
     if (
@@ -1281,114 +1105,10 @@ function startPaymentPolling() {
       !purchaseOverlay.hidden &&
       !paymentPanel.hidden
     ) {
-      void verifyPayment();
+      void checkPayment();
     }
   }, PAYMENT_CHECK_MS);
 }
-
-/* VALIDATE PAYMENT RESPONSE */
-
-function validatePaymentResponse(
-  data,
-  tier
-) {
-  if (
-    !data.purchaseId ||
-    typeof data.purchaseId !== "string"
-  ) {
-    throw new Error(
-      "Backend did not return a purchase ID."
-    );
-  }
-
-  if (
-    !data.paymentUrl ||
-    typeof data.paymentUrl !== "string"
-  ) {
-    throw new Error(
-      "Backend did not return a Solana Pay URL."
-    );
-  }
-
-  if (
-    !data.reference ||
-    typeof data.reference !== "string"
-  ) {
-    throw new Error(
-      "Backend did not return a payment reference."
-    );
-  }
-
-  const amount = Number(
-    data.awtAmount
-  );
-
-  if (
-    !Number.isFinite(amount) ||
-    amount <= 0
-  ) {
-    throw new Error(
-      "Backend returned an invalid AWT amount."
-    );
-  }
-
-  if (
-    Number(data.priceUsd) !==
-    CAPSULE_PRICES[tier]
-  ) {
-    throw new Error(
-      "Backend returned an incorrect capsule price."
-    );
-  }
-
-  const url = new URL(
-    data.paymentUrl
-  );
-
-  if (url.protocol !== "solana:") {
-    throw new Error(
-      "Invalid Solana Pay protocol."
-    );
-  }
-
-  if (url.pathname !== RECEIVER) {
-    throw new Error(
-      "Incorrect payment recipient."
-    );
-  }
-
-  if (
-    url.searchParams.get("spl-token") !==
-    AWT_MINT
-  ) {
-    throw new Error(
-      "Incorrect payment token."
-    );
-  }
-
-  if (
-    url.searchParams.get("reference") !==
-    data.reference
-  ) {
-    throw new Error(
-      "Payment reference mismatch."
-    );
-  }
-
-  if (
-    Number(
-      url.searchParams.get("amount")
-    ) !== amount
-  ) {
-    throw new Error(
-      "Payment amount mismatch."
-    );
-  }
-
-  return true;
-}
-
-/* DISPLAY SOLANA PAY */
 
 async function showPayment(purchase) {
   activePurchase = purchase;
@@ -1396,84 +1116,66 @@ async function showPayment(purchase) {
   paymentPanel.hidden = false;
 
   paymentTitle.textContent =
-    purchase.tier.toUpperCase() +
-    " CAPSULE";
+    purchase.tier.toUpperCase() + " CAPSULE";
 
   paymentUsd.textContent =
-    "$" +
-    Number(purchase.priceUsd).toFixed(2) +
-    " USD";
+    "$" + Number(purchase.priceUsd).toFixed(2) + " USD";
 
   paymentAwt.textContent =
-    String(purchase.awtAmount) +
-    " $AWT";
+    purchase.awtAmount + " $AWT";
 
-  paymentWallet.href =
-    purchase.paymentUrl;
-
+  paymentWallet.href = purchase.paymentUrl;
   paymentWallet.hidden = false;
+
   paymentCopy.hidden = false;
   paymentCheck.hidden = false;
 
-  showPaymentMessage(
-    "Scan the QR code with a Solana Pay wallet " +
-    "or open the payment link."
+  paymentQr.hidden = false;
+
+  paymentBack.textContent = "BACK";
+
+  paymentStatus(
+    "Scan with a Solana Pay wallet or open the payment link."
   );
 
   try {
     if (!window.QRCode) {
-      throw new Error(
-        "QR library unavailable"
-      );
+      throw new Error("QR code library unavailable");
     }
 
-    await window.QRCode.toCanvas(
+    await QRCode.toCanvas(
       paymentQr,
       purchase.paymentUrl,
       {
         width: 220,
-        margin: 2,
-        errorCorrectionLevel: "M"
+        margin: 2
       }
     );
-
-    paymentQr.hidden = false;
-
   } catch (error) {
     paymentQr.hidden = true;
 
-    showPaymentMessage(
-      "QR unavailable. Use OPEN WALLET " +
-      "or COPY LINK. " +
-      error.message,
+    paymentStatus(
+      "QR unavailable. Use OPEN WALLET or COPY LINK.",
       true
     );
   }
 
-  startPaymentPolling();
+  startPolling();
 }
 
 /* VERIFY PAYMENT */
 
-async function verifyPayment() {
-  if (
-    !activePurchase ||
-    checkingPayment ||
-    !currentUser
-  ) {
-    return;
-  }
+async function checkPayment() {
+  if (!activePurchase || checkingPayment) return;
 
   checkingPayment = true;
-
-  const purchaseId =
-    activePurchase.purchaseId;
-
   paymentCheck.disabled = true;
 
+  const purchaseId = activePurchase.purchaseId;
+
   try {
-    const result = await invokeFunction(
-      VERIFY_FUNCTION,
+    const result = await invoke(
+      "verify-capsule",
       { purchaseId }
     );
 
@@ -1485,149 +1187,126 @@ async function verifyPayment() {
     }
 
     if (
+      result.status === "paid" ||
       result.status === "fulfilled"
     ) {
-      stopPaymentPolling();
+      stopPolling();
       clearPending();
 
-      const capsule = result.capsule;
+      const reward = result.capsule;
 
-      paymentTitle.textContent =
-        "CAPSULE RECEIVED";
+      paymentTitle.textContent = "CAPSULE OPENED";
 
-      if (capsule) {
-        paymentAwt.textContent =
-          "CAPSULE #" +
-          capsule.id;
+      paymentAwt.textContent =
+        reward?.reward_name || "Reward selected";
 
-        showPaymentMessage(
-          "YOU RECEIVED: " +
-          capsule.reward_name +
-          "\nTYPE: " +
-          capsule.reward_type.toUpperCase()
-        );
+      const rewardType =
+        reward?.reward_type || "";
 
-      } else {
-        showPaymentMessage(
-          "Payment verified and purchase fulfilled."
-        );
+      let message =
+        "REWARD: " +
+        (reward?.reward_name || "Unknown") +
+        "\nTYPE: " +
+        rewardType.toUpperCase();
+
+      if (
+        rewardType === "nft" ||
+        rewardType === "crypto"
+      ) {
+        message += "\nDelivery pending.";
       }
+
+      paymentStatus(message);
 
       paymentWallet.hidden = true;
       paymentCopy.hidden = true;
       paymentCheck.hidden = true;
       paymentQr.hidden = true;
 
+      paymentBack.textContent = "BACK TO CAPSULES";
+
       return;
     }
 
-    if (
-      result.status === "pending"
-    ) {
-      showPaymentMessage(
+    if (result.status === "pending") {
+      paymentStatus(
         result.message ||
         "Waiting for Solana payment confirmation..."
       );
-
       return;
     }
 
-    showPaymentMessage(
-      "Backend returned: " +
-      JSON.stringify(result),
+    paymentStatus(
+      "Purchase status: " + result.status,
       true
     );
-
   } catch (error) {
-    console.error(
-      "PAYMENT VERIFICATION ERROR:",
-      error
-    );
+    console.error("[VERIFY]", error);
 
-    showPaymentMessage(
-      "VERIFY ERROR: " +
-      error.message,
+    paymentStatus(
+      "Verification error: " + error.message,
       true
     );
-
   } finally {
     checkingPayment = false;
     paymentCheck.disabled = false;
   }
 }
 
-/* BUY CAPSULE */
+/* CREATE PURCHASE */
 
 async function buyCapsule(tier) {
-  if (creatingPurchase) return;
+  if (purchasing) return;
 
   if (!currentUser) {
     closePurchase();
-    openSignIn();
+    openAuth();
     return;
   }
 
-  const existing = loadPending();
+  const pending = readPending();
 
-  if (
-    existing?.purchaseId &&
-    existing?.paymentUrl
-  ) {
+  if (pending?.purchaseId && pending?.paymentUrl) {
     try {
-      validatePaymentResponse(
-        existing,
-        existing.tier
-      );
+      validatePurchase(pending, pending.tier);
 
-      await showPayment(existing);
-      await verifyPayment();
-
+      await showPayment(pending);
+      await checkPayment();
     } catch (error) {
-      showPurchaseError(
-        "PENDING PURCHASE ERROR: " +
-        error.message
-      );
+      purchaseStatus.textContent = error.message;
     }
 
     return;
   }
 
-  creatingPurchase = true;
+  purchasing = true;
 
-  tierButtons.forEach(
-    button => {
-      button.disabled = true;
-    }
-  );
+  tierButtons.forEach(button => {
+    button.disabled = true;
+  });
 
-  purchaseStatus.textContent =
-    "Creating purchase...";
+  purchaseStatus.textContent = "CREATING PURCHASE...";
 
   try {
-    await refreshAWTPrice();
+    const price = await refreshAWTPrice();
 
-    if (currentAWTPrice === null) {
-      throw new Error(
-        "Cannot retrieve the current AWT price."
-      );
+    if (price === null) {
+      throw new Error("AWT price unavailable");
     }
 
-    const result = await invokeFunction(
-      PURCHASE_FUNCTION,
+    const result = await invoke(
+      "purchase-capsule",
       { tier }
     );
 
-    validatePaymentResponse(
-      result,
-      tier
-    );
+    validatePurchase(result, tier);
 
     const purchase = {
       purchaseId: result.purchaseId,
       tier,
       priceUsd: result.priceUsd,
-      awtAmount: result.awtAmount,
       awtUsd: result.awtUsd,
+      awtAmount: result.awtAmount,
       paymentUrl: result.paymentUrl,
       reference: result.reference,
       expiresAt: result.expiresAt
@@ -1638,26 +1317,17 @@ async function buyCapsule(tier) {
     purchaseStatus.textContent = "";
 
     await showPayment(purchase);
-
   } catch (error) {
-    console.error(
-      "PURCHASE CREATION ERROR:",
-      error
-    );
+    console.error("[PURCHASE]", error);
 
-    showPurchaseError(
-      "PURCHASE ERROR: " +
-      error.message
-    );
-
+    purchaseStatus.textContent =
+      "PURCHASE ERROR: " + error.message;
   } finally {
-    creatingPurchase = false;
+    purchasing = false;
 
-    tierButtons.forEach(
-      button => {
-        button.disabled = false;
-      }
-    );
+    tierButtons.forEach(button => {
+      button.disabled = false;
+    });
   }
 }
 
@@ -1665,40 +1335,28 @@ async function buyCapsule(tier) {
 
 async function openPurchase() {
   purchaseOverlay.hidden = false;
-
-  purchaseStatus.textContent = "";
   paymentPanel.hidden = true;
+  purchaseStatus.textContent = "";
 
   void refreshAWTPrice();
 
-  if (currentUser) {
-    const pending = loadPending();
+  const pending = currentUser ? readPending() : null;
 
-    if (
-      pending?.purchaseId &&
-      pending?.paymentUrl
-    ) {
-      try {
-        validatePaymentResponse(
-          pending,
-          pending.tier
-        );
+  if (pending?.purchaseId && pending?.paymentUrl) {
+    try {
+      validatePurchase(pending, pending.tier);
 
-        await showPayment(pending);
-        await verifyPayment();
-
-      } catch (error) {
-        showPurchaseError(
-          "PENDING PURCHASE ERROR: " +
-          error.message
-        );
-      }
+      await showPayment(pending);
+      await checkPayment();
+    } catch (error) {
+      purchaseStatus.textContent =
+        "PENDING PURCHASE: " + error.message;
     }
   }
 }
 
 function closePurchase() {
-  stopPaymentPolling();
+  stopPolling();
 
   purchaseOverlay.hidden = true;
   paymentPanel.hidden = true;
@@ -1711,26 +1369,27 @@ payButton.onclick = () => {
   void openPurchase();
 };
 
-purchaseClose.onclick =
-  closePurchase;
+purchaseClose.onclick = closePurchase;
 
 purchaseOverlay.onclick = event => {
-  if (
-    event.target === purchaseOverlay
-  ) {
+  if (event.target === purchaseOverlay) {
     closePurchase();
   }
 };
 
 tierButtons.forEach(button => {
   button.onclick = () => {
-    void buyCapsule(
-      button.dataset.tier
-    );
+    void buyCapsule(button.dataset.tier);
   };
 });
 
 /* PAYMENT ACTIONS */
+
+paymentWallet.addEventListener("click", event => {
+  if (!activePurchase) {
+    event.preventDefault();
+  }
+});
 
 paymentCopy.onclick = async () => {
   if (!activePurchase) return;
@@ -1740,48 +1399,46 @@ paymentCopy.onclick = async () => {
       activePurchase.paymentUrl
     );
 
-    showPaymentMessage(
-      "Solana Pay link copied."
-    );
-
+    paymentStatus("Solana Pay link copied.");
   } catch (error) {
-    showPaymentMessage(
-      "Copy failed: " +
-      error.message,
+    paymentStatus(
+      "Copy failed: " + error.message,
       true
     );
   }
 };
 
 paymentCheck.onclick = () => {
-  void verifyPayment();
+  void checkPayment();
 };
 
 paymentBack.onclick = () => {
-  stopPaymentPolling();
+  stopPolling();
+
+  if (
+    activePurchase &&
+    !readPending()
+  ) {
+    activePurchase = null;
+  }
 
   paymentPanel.hidden = true;
   purchaseStatus.textContent = "";
 };
 
-/* CLOSE OVERLAYS */
+/* CLOSE */
 
-document.addEventListener(
-  "keydown",
-  event => {
-    if (event.key !== "Escape") {
-      return;
-    }
+document.addEventListener("keydown", event => {
+  if (event.key !== "Escape") return;
 
-    if (!purchaseOverlay.hidden) {
-      closePurchase();
-    } else {
-      closeSignIn();
-    }
+  if (!purchaseOverlay.hidden) {
+    closePurchase();
+  } else {
+    closeAuth();
   }
-);
+});
 
-/* START LIVE AWT PRICE */
+/* START */
 
 void refreshAWTPrice();
 
@@ -1789,14 +1446,11 @@ setInterval(() => {
   void refreshAWTPrice();
 }, PRICE_REFRESH_MS);
 
-document.addEventListener(
-  "visibilitychange",
-  () => {
-    if (!document.hidden) {
-      void refreshAWTPrice();
-    }
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    void refreshAWTPrice();
   }
-);
+});
 </script>
 
 </body>
