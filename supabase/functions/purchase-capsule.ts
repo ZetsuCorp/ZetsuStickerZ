@@ -10,7 +10,7 @@ const RECEIVER =
   "CT1fjjJMaNb2jgwH7rnuyiLcASmtmdRzSw7tQv8VXaRK";
 
 const PRICES = {
-  common: "0.50",
+  common: "0.05",
   rare: "1.00",
   legendary: "3.00"
 } as const;
