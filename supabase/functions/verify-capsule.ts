@@ -9,16 +9,7 @@ const RPC_URL =
   Deno.env.get("SOLANA_RPC_URL") ||
   "https://api.mainnet-beta.solana.com";
 
-const MINT =
-  "ETvGFek4eDeHP7iC7yceGpduTRypHpsUT6tybwMXpump";
-
-const RECEIVER =
-  "CT1fjjJMaNb2jgwH7rnuyiLcASmtmdRzSw7tQv8VXaRK";
-
-const TOKEN_PROGRAMS = new Set([
-  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-  "TokenzQdBNbLqP5VEhdkAS6EPFmyXzM7o4LPN4KC"
-]);
+const SYSTEM_PROGRAM = "11111111111111111111111111111111";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -139,312 +130,56 @@ function getAllInstructions(transaction: any): any[] {
   return [...outer, ...inner];
 }
 
-/* DECODE SPL TOKEN AMOUNT */
+/* DECODE NATIVE SOL TRANSFER */
 
 function readUint64LE(bytes: Uint8Array): bigint {
   let amount = 0n;
-
-  for (let i = 7; i >= 0; i--) {
-    amount =
-      (amount << 8n) +
-      BigInt(bytes[i]);
-  }
-
+  for (let i = 7; i >= 0; i--) amount = (amount << 8n) + BigInt(bytes[i]);
   return amount;
 }
 
-function decodeTransfer(
-  instruction: any,
-  accounts: string[]
-) {
-  const programId =
-    accounts[instruction.programIdIndex];
+function verifyTransfer(transaction: any, purchase: any): boolean {
+  if (!transaction?.meta || transaction.meta.err !== null ||
+      typeof transaction.blockTime !== "number") return false;
 
-  if (!TOKEN_PROGRAMS.has(programId)) {
-    return null;
-  }
-
-  if (
-    typeof instruction.data !== "string" ||
-    !Array.isArray(instruction.accounts)
-  ) {
-    return null;
-  }
-
-  const bytes = bs58.decode(instruction.data);
-
-  if (bytes.length < 9) {
-    return null;
-  }
-
-  const type = bytes[0];
-
-  /*
-    SPL Token instruction 3:
-    Transfer
-
-    Accounts:
-    0 = Source
-    1 = Destination
-    2 = Authority
-  */
-
-  if (type === 3) {
-    if (instruction.accounts.length < 3) {
-      return null;
-    }
-
-    return {
-      destination:
-        accounts[instruction.accounts[1]],
-
-      amount: readUint64LE(
-        bytes.subarray(1, 9)
-      ),
-
-      mint: null,
-
-      accounts: instruction.accounts.map(
-        (index: number) => accounts[index]
-      )
-    };
-  }
-
-  /*
-    SPL Token instruction 12:
-    TransferChecked
-
-    Accounts:
-    0 = Source
-    1 = Mint
-    2 = Destination
-    3 = Authority
-  */
-
-  if (type === 12) {
-    if (
-      bytes.length < 10 ||
-      instruction.accounts.length < 4
-    ) {
-      return null;
-    }
-
-    return {
-      destination:
-        accounts[instruction.accounts[2]],
-
-      amount: readUint64LE(
-        bytes.subarray(1, 9)
-      ),
-
-      mint:
-        accounts[instruction.accounts[1]],
-
-      accounts: instruction.accounts.map(
-        (index: number) => accounts[index]
-      )
-    };
-  }
-
-  return null;
-}
-
-/* VERIFY ACTUAL AWT PAYMENT */
-
-function verifyTransfer(
-  transaction: any,
-  purchase: any
-): boolean {
-  if (
-    !transaction?.meta ||
-    transaction.meta.err !== null
-  ) {
-    return false;
-  }
-
-  if (
-    typeof transaction.blockTime !== "number"
-  ) {
-    return false;
-  }
-
-  /*
-    Transaction must be associated
-    with this purchase's creation time.
-  */
-
-  const createdAt =
-    new Date(purchase.created_at).getTime();
-
-  if (!Number.isFinite(createdAt)) {
-    return false;
-  }
-
-  const earliest =
-    Math.floor(createdAt / 1000) - 120;
-
-  if (transaction.blockTime < earliest) {
-    return false;
-  }
+  const createdAt = Date.parse(purchase.created_at);
+  if (!Number.isFinite(createdAt) ||
+      transaction.blockTime < Math.floor(createdAt / 1000) - 120) return false;
 
   const accounts = getAccounts(transaction);
+  const reference = purchase.payment_reference;
+  const receiverIndex = accounts.indexOf(RECEIVER);
+  if (typeof reference !== "string" || !accounts.includes(reference) ||
+      receiverIndex < 0) return false;
 
-  const reference =
-    purchase.payment_reference;
+  const quoted = new Decimal(String(purchase.sol_amount)).mul(1_000_000_000);
+  if (!quoted.isFinite() || !quoted.isInteger() || quoted.lte(0)) return false;
+  const expected = BigInt(quoted.toFixed(0));
 
-  if (
-    typeof reference !== "string" ||
-    !accounts.includes(reference)
-  ) {
-    return false;
-  }
+  const before = transaction.meta.preBalances?.[receiverIndex];
+  const after = transaction.meta.postBalances?.[receiverIndex];
+  if (!Number.isSafeInteger(before) || !Number.isSafeInteger(after) ||
+      BigInt(after) - BigInt(before) < expected) return false;
 
-  const preBalances =
-    transaction.meta.preTokenBalances || [];
+  // Solana Pay reference is a read-only account in the signed transaction;
+  // it need not be an account of the native SOL transfer instruction.
+  let sum = 0n;
+  for (const instruction of getAllInstructions(transaction)) {
+    if (accounts[instruction.programIdIndex] !== SYSTEM_PROGRAM ||
+        typeof instruction.data !== "string" ||
+        !Array.isArray(instruction.accounts) ||
+        instruction.accounts.length < 2) continue;
 
-  const postBalances =
-    transaction.meta.postTokenBalances || [];
+    let bytes: Uint8Array;
+    try { bytes = bs58.decode(instruction.data); } catch { continue; }
+    if (bytes.length !== 12 || bytes[0] !== 2 ||
+        bytes[1] !== 0 || bytes[2] !== 0 || bytes[3] !== 0) continue;
 
-  const instructions =
-    getAllInstructions(transaction);
-
-  const expected =
-    new Decimal(String(purchase.awt_amount));
-
-  if (
-    !expected.isFinite() ||
-    expected.lte(0)
-  ) {
-    return false;
-  }
-
-  /*
-    Inspect receiving token accounts.
-
-    Require:
-    - Correct AWT mint
-    - Correct receiver
-    - Sufficient balance increase
-    - Actual SPL token transfer
-    - Correct payment reference
-    - Sufficient amount sent
-  */
-
-  for (const balance of postBalances) {
-    if (
-      balance.mint !== MINT ||
-      balance.owner !== RECEIVER
-    ) {
-      continue;
-    }
-
-    const destination =
-      accounts[balance.accountIndex];
-
-    if (!destination) {
-      continue;
-    }
-
-    const decimals =
-      balance.uiTokenAmount?.decimals;
-
-    if (
-      !Number.isInteger(decimals) ||
-      decimals < 0
-    ) {
-      continue;
-    }
-
-    const expectedDecimal = expected.mul(
-      new Decimal(10).pow(decimals)
-    );
-
-    if (
-      !expectedDecimal.isFinite() ||
-      !expectedDecimal.isInteger()
-    ) {
-      continue;
-    }
-
-    const expectedRaw = BigInt(
-      expectedDecimal.toFixed(0)
-    );
-
-    if (expectedRaw <= 0n) {
-      continue;
-    }
-
-    const before = preBalances.find(
-      (entry: any) =>
-        entry.accountIndex === balance.accountIndex &&
-        entry.mint === MINT
-    );
-
-    const afterRaw = BigInt(
-      balance.uiTokenAmount.amount
-    );
-
-    const beforeRaw = BigInt(
-      before?.uiTokenAmount?.amount || "0"
-    );
-
-    const receivedRaw =
-      afterRaw - beforeRaw;
-
-    if (receivedRaw < expectedRaw) {
-      continue;
-    }
-
-    /*
-      Decode the transfer instructions.
-
-      The reference must be attached
-      to the actual token transfer.
-
-      Merely appearing somewhere in
-      the transaction is insufficient.
-    */
-
-    let transferredRaw = 0n;
-
-    for (const instruction of instructions) {
-      const transfer = decodeTransfer(
-        instruction,
-        accounts
-      );
-
-      if (!transfer) {
-        continue;
-      }
-
-      if (
-        transfer.destination !== destination
-      ) {
-        continue;
-      }
-
-      if (
-        transfer.mint !== null &&
-        transfer.mint !== MINT
-      ) {
-        continue;
-      }
-
-      if (
-        !transfer.accounts.includes(reference)
-      ) {
-        continue;
-      }
-
-      transferredRaw += transfer.amount;
-    }
-
-    if (transferredRaw >= expectedRaw) {
-      return true;
+    if (accounts[instruction.accounts[1]] === RECEIVER) {
+      sum += readUint64LE(bytes.subarray(4, 12));
     }
   }
-
-  return false;
+  return sum >= expected;
 }
 
 /* RETURN EXISTING REWARD */
@@ -573,9 +308,9 @@ Deno.serve(async request => {
         Retrieve raw transaction instructions.
 
         This allows inspection of:
-        - SPL token program
-        - Destination token account
-        - Transfer amount
+        - Native SOL transfer
+        - Receiving wallet
+        - Lamports transferred
         - Payment reference
       */
 
