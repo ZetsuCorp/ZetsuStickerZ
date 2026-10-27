@@ -1,5 +1,5 @@
 
-import { getSolPriceUsd } from "../_shared/sol-price.ts";
+import { getSolPriceUsd } from "./_shared/sol-price.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
