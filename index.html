@@ -7,6 +7,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+<script src="https://unpkg.com/@solana/web3.js@1.98.4/lib/index.iife.min.js"></script>
 
 <style>
 * {
@@ -1394,9 +1395,56 @@ tierButtons.forEach(button => {
 
 /* WALLET */
 
-paymentWallet.addEventListener("click", event => {
+paymentWallet.addEventListener("click", async event => {
   if (!activePurchase) {
     event.preventDefault();
+    return;
+  }
+
+  // Desktop: launch an actual Phantom extension transaction.
+  const phantom = window.phantom?.solana;
+  if (!phantom?.isPhantom) {
+    // Mobile: retain the standard Solana Pay wallet link and QR fallback.
+    return;
+  }
+  event.preventDefault();
+
+  try {
+    const web3 = window.solanaWeb3;
+    if (!web3) throw new Error("Solana transaction library unavailable");
+
+    paymentStatus("Opening Phantom...");
+    const { publicKey } = await phantom.connect();
+    const tx = new web3.Transaction();
+    const lamports = BigInt(
+      Math.round(Number(activePurchase.solAmount) * 1_000_000_000)
+    );
+    if (lamports <= 0n || lamports > BigInt(Number.MAX_SAFE_INTEGER)) {
+      throw new Error("Invalid SOL amount");
+    }
+
+    const transfer = web3.SystemProgram.transfer({
+      fromPubkey: publicKey,
+      toPubkey: new web3.PublicKey(RECEIVER),
+      lamports: Number(lamports)
+    });
+    transfer.keys.push({
+      pubkey: new web3.PublicKey(activePurchase.reference),
+      isSigner: false,
+      isWritable: false
+    });
+    tx.add(transfer);
+    tx.feePayer = publicKey;
+    const connection = new web3.Connection(
+      "https://api.mainnet-beta.solana.com", "confirmed"
+    );
+    tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+    await phantom.signAndSendTransaction(tx);
+    paymentStatus("SOL sent. Waiting for on-chain confirmation...");
+    startPolling();
+  } catch (error) {
+    console.error("[PHANTOM]", error);
+    paymentStatus("Phantom: " + (error.message || error), true);
   }
 });
 
