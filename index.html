@@ -477,8 +477,7 @@ body {
       <span
         class="sol-price-tag"
         id="sol-price-main"
-        title="Current SOL price in USD">
-      </span>
+        title="Current SOL price in USD">SOL LOADING...</span>
 
       <div
         class="dispenser-container"
@@ -536,8 +535,7 @@ body {
     <span
       class="purchase-price-tag"
       id="sol-price-purchase"
-      title="Current SOL price in USD">
-    </span>
+      title="Current SOL price in USD">SOL LOADING...</span>
 
     <button
       class="purchase-hotspot purchase-common"
@@ -757,25 +755,65 @@ async function functionError(error) {
   return message;
 }
 
-/* LIVE SOL/USD PRICE */
+/* LIVE SOL/USD PRICE: PUBLIC MARKET DATA, NO SUPABASE FUNCTION */
+
+let lastSOLPrice = null;
+
 function formatPrice(price) {
-  return "$" + new Intl.NumberFormat("en-US", {minimumFractionDigits: 2,maximumFractionDigits: 2}).format(price);
+  return "$" + Number(price).toFixed(2);
 }
+
 async function refreshSOLPrice() {
-  const {data,error} = await client.functions.invoke("sol-price", {method:"POST"});
-  if (error || data?.success !== true) throw new Error(data?.error || error?.message || "Price unavailable");
-  const price = Number(data.priceUsd);
-  if (!Number.isFinite(price) || price <= 0) throw new Error("Invalid SOL price");
-  priceMain.textContent = "SOL " + formatPrice(price);
-  pricePurchase.textContent = "SOL " + formatPrice(price);
+  const feeds = [
+    {
+      url: "https://api.coinbase.com/v2/prices/SOL-USD/spot",
+      get: json => json?.data?.amount
+    },
+    {
+      url: "https://api.kraken.com/0/public/Ticker?pair=SOLUSD",
+      get: json => Object.values(json?.result || {})[0]?.c?.[0]
+    },
+    {
+      url: "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd",
+      get: json => json?.solana?.usd
+    }
+  ];
+
+  for (const feed of feeds) {
+    try {
+      const response = await fetch(feed.url, {
+        method: "GET",
+        cache: "no-store",
+        credentials: "omit",
+        signal: AbortSignal.timeout(6000)
+      });
+      if (!response.ok) continue;
+
+      const price = Number(feed.get(await response.json()));
+      if (!Number.isFinite(price) || price <= 0) continue;
+
+      lastSOLPrice = price;
+      const label = "SOL " + formatPrice(price);
+      priceMain.textContent = label;
+      pricePurchase.textContent = label;
+      return;
+    } catch (error) {
+      console.warn("[SOL PRICE] Market feed unavailable:", feed.url, error);
+    }
+  }
+
+  // Preserve the last valid quote if all price feeds temporarily fail.
+  const label = lastSOLPrice === null
+    ? "SOL PRICE UNAVAILABLE"
+    : "SOL " + formatPrice(lastSOLPrice) + " (LAST)";
+  priceMain.textContent = label;
+  pricePurchase.textContent = label;
 }
+
 function updateSOLPrice() {
-  void refreshSOLPrice().catch(error => {
-    console.error("[SOL PRICE]", error);
-    priceMain.textContent = "SOL PRICE N/A";
-    pricePurchase.textContent = "SOL PRICE N/A";
-  });
+  void refreshSOLPrice();
 }
+
 /* DISCORD USER INFORMATION */
 
 function discordName(user) {
@@ -962,9 +1000,15 @@ async function invoke(name, body) {
     );
 
   if (error) {
-    throw new Error(
-      await functionError(error)
-    );
+    const detail = await functionError(error);
+    if (error.name === "FunctionsFetchError" ||
+        /Failed to send a request to the Edge Function/i.test(detail)) {
+      throw new Error(
+        "Payment server unavailable (" + name +
+        "). Its Supabase Edge Function must be deployed."
+      );
+    }
+    throw new Error(detail);
   }
 
   if (!data || data.error) {
