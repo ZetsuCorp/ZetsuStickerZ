@@ -1435,10 +1435,15 @@ paymentWallet.addEventListener("click", async event => {
     });
     tx.add(transfer);
     tx.feePayer = publicKey;
-    const connection = new web3.Connection(
-      "https://api.mainnet-beta.solana.com", "confirmed"
+    // Request a fresh blockhash from the backend to avoid browser RPC 403/CORS.
+    const { data: block, error: blockError } = await client.functions.invoke(
+      "solana-blockhash", { method: "POST", body: {} }
     );
-    tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+    if (blockError || !block?.blockhash) {
+      const detail = blockError ? await functionError(blockError) : block?.error;
+      throw new Error("Could not get SOL blockhash: " + (detail || "No response"));
+    }
+    tx.recentBlockhash = block.blockhash;
     await phantom.signAndSendTransaction(tx);
     paymentStatus("SOL sent. Waiting for on-chain confirmation...");
     startPolling();
