@@ -5,9 +5,12 @@ import bs58 from "npm:bs58@6";
 const URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-const RPC_URL =
-  Deno.env.get("SOLANA_RPC_URL") ||
-  "https://api.mainnet-beta.solana.com";
+const RPC_URLS = [
+  Deno.env.get("SOLANA_RPC_URL"),
+  "https://solana-rpc.publicnode.com",
+  "https://rpc.solanatracker.io/public",
+  "https://api.mainnet.solana.com"
+].filter((url): url is string => !!url);
 
 const RECEIVER = "CT1fjjJMaNb2jgwH7rnuyiLcASmtmdRzSw7tQv8VXaRK";
 const SYSTEM_PROGRAM = "11111111111111111111111111111111";
@@ -38,35 +41,30 @@ function output(data: unknown, status = 200) {
 /* SOLANA RPC */
 
 async function rpc(method: string, params: unknown[]) {
-  const response = await fetch(RPC_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method,
-      params
-    }),
-    signal: AbortSignal.timeout(15000)
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      `Solana RPC HTTP ${response.status}`
-    );
+  let lastError = "No available Solana RPC";
+  for (const url of RPC_URLS) {
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+        signal: AbortSignal.timeout(7000)
+      });
+      if (!response.ok) {
+        lastError = "Solana RPC HTTP " + response.status;
+        continue;
+      }
+      const data = await response.json();
+      if (data.error) {
+        lastError = JSON.stringify(data.error);
+        continue;
+      }
+      return data.result;
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+    }
   }
-
-  const data = await response.json();
-
-  if (data.error) {
-    throw new Error(
-      JSON.stringify(data.error)
-    );
-  }
-
-  return data.result;
+  throw new Error("Solana RPC unavailable: " + lastError);
 }
 
 /* AUTHENTICATION */
