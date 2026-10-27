@@ -9,6 +9,7 @@ const RPC_URL =
   Deno.env.get("SOLANA_RPC_URL") ||
   "https://api.mainnet-beta.solana.com";
 
+const RECEIVER = "CT1fjjJMaNb2jgwH7rnuyiLcASmtmdRzSw7tQv8VXaRK";
 const SYSTEM_PROGRAM = "11111111111111111111111111111111";
 
 const CORS = {
@@ -161,8 +162,7 @@ function verifyTransfer(transaction: any, purchase: any): boolean {
   if (!Number.isSafeInteger(before) || !Number.isSafeInteger(after) ||
       BigInt(after) - BigInt(before) < expected) return false;
 
-  // Solana Pay reference is a read-only account in the signed transaction;
-  // it need not be an account of the native SOL transfer instruction.
+  // Require the read-only Solana Pay reference on the SOL transfer itself.
   let sum = 0n;
   for (const instruction of getAllInstructions(transaction)) {
     if (accounts[instruction.programIdIndex] !== SYSTEM_PROGRAM ||
@@ -175,7 +175,9 @@ function verifyTransfer(transaction: any, purchase: any): boolean {
     if (bytes.length !== 12 || bytes[0] !== 2 ||
         bytes[1] !== 0 || bytes[2] !== 0 || bytes[3] !== 0) continue;
 
-    if (accounts[instruction.accounts[1]] === RECEIVER) {
+    // Solana Pay requires the unique reference on the transfer instruction.
+    const keys = instruction.accounts.map((i: number) => accounts[i]);
+    if (keys[1] === RECEIVER && keys.includes(reference)) {
       sum += readUint64LE(bytes.subarray(4, 12));
     }
   }
