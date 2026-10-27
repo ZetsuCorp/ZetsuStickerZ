@@ -74,9 +74,9 @@ body {
   pointer-events: none;
 }
 
-/* AWT PRICE LABELS */
+/* SOL PRICE LABELS */
 
-.awt-price-tag,
+.sol-price-tag,
 .purchase-price-tag {
   position: absolute;
   z-index: 3;
@@ -92,7 +92,7 @@ body {
   pointer-events: none;
 }
 
-.awt-price-tag {
+.sol-price-tag {
   top: 8px;
   right: 8px;
 }
@@ -403,14 +403,14 @@ body {
     border-radius: 8px;
   }
 
-  .awt-price-tag,
+  .sol-price-tag,
   .purchase-price-tag {
     top: 4px;
     padding: 2px 4px;
     font-size: 8px;
   }
 
-  .awt-price-tag {
+  .sol-price-tag {
     right: 4px;
   }
 
@@ -475,9 +475,9 @@ body {
       >
 
       <span
-        class="awt-price-tag"
-        id="awt-price-main"
-        title="AWT / USD">
+        class="sol-price-tag"
+        id="sol-price-main"
+        title="Current SOL price in USD">
       </span>
 
       <div
@@ -535,8 +535,8 @@ body {
 
     <span
       class="purchase-price-tag"
-      id="awt-price-purchase"
-      title="AWT / USD">
+      id="sol-price-purchase"
+      title="Current SOL price in USD">
     </span>
 
     <button
@@ -582,7 +582,7 @@ body {
 
       <div
         class="payment-amount"
-        id="payment-awt">
+        id="payment-sol">
       </div>
 
       <canvas id="payment-qr"></canvas>
@@ -661,9 +661,6 @@ const SUPABASE_URL =
 const SUPABASE_KEY =
   "sb_publishable_jmEahTk4OssD_IrOZq_6iQ_P6QFFJr6";
 
-const AWT_MINT =
-  "ETvGFek4eDeHP7iC7yceGpduTRypHpsUT6tybwMXpump";
-
 const RECEIVER =
   "CT1fjjJMaNb2jgwH7rnuyiLcASmtmdRzSw7tQv8VXaRK";
 
@@ -691,17 +688,14 @@ const $ = id => document.getElementById(id);
 let currentUser = null;
 let activePurchase = null;
 
-let currentAWTPrice = null;
-let priceRequest = null;
-
 let paymentTimer = null;
 let purchasing = false;
 let checkingPayment = false;
 
 /* ELEMENTS */
 
-const priceMain = $("awt-price-main");
-const pricePurchase = $("awt-price-purchase");
+const priceMain = $("sol-price-main");
+const pricePurchase = $("sol-price-purchase");
 
 const payButton = $("pay-button");
 const signinButton = $("signin-button");
@@ -715,7 +709,7 @@ const purchaseStatus = $("purchase-status");
 const paymentPanel = $("payment-panel");
 const paymentTitle = $("payment-title");
 const paymentUsd = $("payment-usd");
-const paymentAwt = $("payment-awt");
+const paymentSol = $("payment-sol");
 const paymentMessage = $("payment-message");
 const paymentQr = $("payment-qr");
 
@@ -763,37 +757,25 @@ async function functionError(error) {
   return message;
 }
 
-/* PUBLISHED PRICE = LIVE PRICE */
-
+/* LIVE SOL/USD PRICE */
 function formatPrice(price) {
-  return "$" + new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 12
-  }).format(price);
+  return "$" + new Intl.NumberFormat("en-US", {minimumFractionDigits: 2,maximumFractionDigits: 2}).format(price);
 }
-
-async function refreshAWTPrice() {
-  const { data, error } = await client.functions.invoke(
-    "awt-price",
-    {
-      method: "POST",
-      body: { mint: AWT_MINT }
-    }
-  );
-
-  if (error) throw error;
-
-  const publishedPrice = Number(data.priceUsd);
-  const formattedPrice = formatPrice(publishedPrice);
-
-  priceMain.textContent = formattedPrice;
-  pricePurchase.textContent = formattedPrice;
+async function refreshSOLPrice() {
+  const {data,error} = await client.functions.invoke("sol-price", {method:"POST"});
+  if (error || data?.success !== true) throw new Error(data?.error || error?.message || "Price unavailable");
+  const price = Number(data.priceUsd);
+  if (!Number.isFinite(price) || price <= 0) throw new Error("Invalid SOL price");
+  priceMain.textContent = "SOL " + formatPrice(price);
+  pricePurchase.textContent = "SOL " + formatPrice(price);
 }
-
-function updateAWTPrice() {
-  void refreshAWTPrice();
+function updateSOLPrice() {
+  void refreshSOLPrice().catch(error => {
+    console.error("[SOL PRICE]", error);
+    priceMain.textContent = "SOL PRICE N/A";
+    pricePurchase.textContent = "SOL PRICE N/A";
+  });
 }
-
 /* DISCORD USER INFORMATION */
 
 function discordName(user) {
@@ -1037,7 +1019,8 @@ function validatePurchase(data, tier) {
     !data ||
     !data.purchaseId ||
     !data.reference ||
-    !data.paymentUrl
+    !data.paymentUrl ||
+    data.receiver !== RECEIVER
   ) {
     throw new Error("Incomplete purchase response");
   }
@@ -1049,13 +1032,13 @@ function validatePurchase(data, tier) {
     throw new Error("Incorrect capsule price");
   }
 
-  const amount = Number(data.awtAmount);
+  const amount = Number(data.solAmount);
 
   if (
     !Number.isFinite(amount) ||
     amount <= 0
   ) {
-    throw new Error("Invalid AWT payment amount");
+    throw new Error("Invalid SOL payment amount");
   }
 
   const url = new URL(data.paymentUrl);
@@ -1063,7 +1046,7 @@ function validatePurchase(data, tier) {
   if (
     url.protocol !== "solana:" ||
     url.pathname !== RECEIVER ||
-    url.searchParams.get("spl-token") !== AWT_MINT ||
+    url.searchParams.has("spl-token") ||
     url.searchParams.get("reference") !== data.reference ||
     Number(url.searchParams.get("amount")) !== amount
   ) {
@@ -1116,8 +1099,8 @@ async function showPayment(purchase) {
     Number(purchase.priceUsd).toFixed(2) +
     " USD";
 
-  paymentAwt.textContent =
-    purchase.awtAmount + " $AWT";
+  paymentSol.textContent =
+    purchase.solAmount + " SOL";
 
   paymentWallet.href = purchase.paymentUrl;
   paymentWallet.hidden = false;
@@ -1193,7 +1176,7 @@ async function checkPayment() {
 
       paymentTitle.textContent = "CAPSULE OPENED";
 
-      paymentAwt.textContent =
+      paymentSol.textContent =
         reward?.reward_name || "Reward selected";
 
       const rewardType = reward?.reward_type || "";
@@ -1294,8 +1277,8 @@ async function buyCapsule(tier) {
       purchaseId: result.purchaseId,
       tier,
       priceUsd: result.priceUsd,
-      awtUsd: result.awtUsd,
-      awtAmount: result.awtAmount,
+      solUsd: result.solUsd,
+      solAmount: result.solAmount,
       paymentUrl: result.paymentUrl,
       reference: result.reference,
       expiresAt: result.expiresAt
@@ -1333,7 +1316,7 @@ function openPurchase() {
   stopPolling();
   activePurchase = null;
 
-  updateAWTPrice();
+  updateSOLPrice();
 }
 
 function closePurchase() {
@@ -1428,10 +1411,10 @@ document.addEventListener("keydown", event => {
 
 /* START */
 
-updateAWTPrice();
+updateSOLPrice();
 
 setInterval(
-  updateAWTPrice,
+  updateSOLPrice,
   PRICE_REFRESH_MS
 );
 
@@ -1439,7 +1422,7 @@ document.addEventListener(
   "visibilitychange",
   () => {
     if (!document.hidden) {
-      updateAWTPrice();
+      updateSOLPrice();
     }
   }
 );
