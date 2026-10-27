@@ -1,16 +1,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { Keypair } from "npm:@solana/web3.js@1.98.4";
 import Decimal from "npm:decimal.js@10.4.3";
+import { getSolPriceUsd } from "./_shared/sol-price.ts";
 
 const URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-const RPC_URL =
-  Deno.env.get("SOLANA_RPC_URL") ||
-  "https://api.mainnet-beta.solana.com";
-
-const MINT =
-  "ETvGFek4eDeHP7iC7yceGpduTRypHpsUT6tybwMXpump";
 
 const RECEIVER =
   "CT1fjjJMaNb2jgwH7rnuyiLcASmtmdRzSw7tQv8VXaRK";
@@ -60,101 +54,10 @@ async function authenticate(request: Request) {
   return data.user;
 }
 
-async function rpc(method: string, params: unknown[]) {
-  const response = await fetch(RPC_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method,
-      params
-    }),
-    signal: AbortSignal.timeout(12000)
-  });
-
-  if (!response.ok) {
-    throw new Error(`Solana RPC HTTP ${response.status}`);
-  }
-
-  const data = await response.json();
-
-  if (data.error) {
-    throw new Error(JSON.stringify(data.error));
-  }
-
-  return data.result;
-}
-
-async function getDecimals() {
-  const result = await rpc("getTokenSupply", [
-    MINT,
-    { commitment: "confirmed" }
-  ]);
-
-  const decimals = result?.value?.decimals;
-
-  if (
-    !Number.isInteger(decimals) ||
-    decimals < 0 ||
-    decimals > 9
-  ) {
-    throw new Error("Could not read AWT decimals");
-  }
-
-  return decimals as number;
-}
-
-async function getAWTPrice() {
-  const response = await fetch(
-    `${URL}/functions/v1/awt-price`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: SERVICE_KEY,
-        Authorization: `Bearer ${SERVICE_KEY}`
-      },
-      body: JSON.stringify({ mint: MINT }),
-      signal: AbortSignal.timeout(16000)
-    }
-  );
-
-  const data = await response.json();
-
-  if (!response.ok || data.success !== true) {
-    throw new Error(
-      "Price lookup: " +
-      String(data.error || `HTTP ${response.status}`)
-    );
-  }
-
-  if (data.mint !== MINT) {
-    throw new Error("Incorrect AWT mint");
-  }
-
-  const price = new Decimal(String(data.priceUsd));
-
-  if (!price.isFinite() || price.lte(0)) {
-    throw new Error("Invalid published AWT price");
-  }
-
-  return price;
-}
-
-function calculateAmount(
-  priceUsd: string,
-  awtUsd: Decimal,
-  decimals: number
-) {
-  const factor = new Decimal(10).pow(decimals);
-
-  return new Decimal(priceUsd)
-    .div(awtUsd)
-    .mul(factor)
-    .ceil()
-    .div(factor)
-    .toFixed(decimals);
+function calculateAmount(priceUsd: string, solUsd: Decimal) {
+  const lamports = new Decimal(priceUsd).div(solUsd).mul(1_000_000_000).ceil();
+  if (!lamports.isFinite() || lamports.lte(0)) throw new Error("Invalid SOL amount");
+  return lamports.div(1_000_000_000).toFixed(9);
 }
 
 function solanaPay(
@@ -164,7 +67,6 @@ function solanaPay(
 ) {
   const params = new URLSearchParams({
     amount,
-    "spl-token": MINT,
     reference,
     label: "Sticker Mania",
     message: `${tier.toUpperCase()} Capsule`
@@ -217,14 +119,8 @@ Deno.serve(async request => {
     }
 
     const priceUsd = PRICES[selectedTier];
-    const awtUsd = await getAWTPrice();
-    const decimals = await getDecimals();
-
-    const awtAmount = calculateAmount(
-      priceUsd,
-      awtUsd,
-      decimals
-    );
+    const solUsd = await getSolPriceUsd();
+    const solAmount = calculateAmount(priceUsd, solUsd);
 
     const reference =
       Keypair.generate().publicKey.toBase58();
@@ -241,7 +137,7 @@ Deno.serve(async request => {
         capsule_id: null,
         tier: selectedTier,
         price_usd: priceUsd,
-        awt_amount: awtAmount,
+        sol_amount: solAmount,
         payment_reference: reference,
         status: "pending",
         expires_at: expiresAt
@@ -261,13 +157,12 @@ Deno.serve(async request => {
       purchaseId: purchase.id,
       tier: selectedTier,
       priceUsd: Number(priceUsd),
-      awtUsd: awtUsd.toString(),
-      awtAmount,
-      mint: MINT,
+      solUsd: solUsd.toString(),
+      solAmount,
       receiver: RECEIVER,
       reference,
       paymentUrl: solanaPay(
-        awtAmount,
+        solAmount,
         reference,
         selectedTier
       ),
