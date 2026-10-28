@@ -75,7 +75,7 @@ body {
 }
 
 .buy-log {
-  position: absolute; z-index: 4; left: 2%; bottom: 2%; width: 19%;
+  position: absolute; z-index: 4; left: 2%; bottom: 2%; width: 72%;
   height: 13%; overflow-y: auto; padding: 4px;
   border: 1px solid rgba(148,59,206,.45); border-radius: 6px;
   background: rgba(9,5,26,.45); color: #f4d5ff;
@@ -83,7 +83,10 @@ body {
   scrollbar-width: thin;
 }
 .buy-log-title { color: #64ffcb; font-size: inherit; font-weight: bold; margin-bottom: 2px; }
-.buy-log-entry { padding: 2px 0; border-top: 1px solid rgba(81,52,107,.4); overflow-wrap: anywhere; }
+.buy-log-entry {
+  padding: 2px 0; border-top: 1px solid rgba(81,52,107,.4);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 
 /* SOL PRICE LABELS */
 
