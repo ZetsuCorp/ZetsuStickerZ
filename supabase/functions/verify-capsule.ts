@@ -142,6 +142,8 @@ function verifyTransfer(transaction: any, purchase: any): boolean {
       typeof transaction.blockTime !== "number") return false;
 
   const createdAt = Date.parse(purchase.created_at);
+  const expiresAt = Date.parse(purchase.expires_at);
+  if (Number.isFinite(expiresAt) && transaction.blockTime * 1000 > expiresAt) return false;
   if (!Number.isFinite(createdAt) ||
       transaction.blockTime < Math.floor(createdAt / 1000) - 120) return false;
 
@@ -378,6 +380,18 @@ Deno.serve(async request => {
         purchaseId,
         paymentSignature: entry.signature
       });
+    }
+
+    /* EXPIRE UNPAID CHECKOUTS; NEVER ACCEPT PAYMENTS AFTER EXPIRATION */
+
+    if (purchase.expires_at && Date.now() >= Date.parse(purchase.expires_at)) {
+      const { error: expireError } = await admin
+        .from("capsule_purchases")
+        .update({ status: "expired" })
+        .eq("id", purchaseId)
+        .eq("status", "pending");
+      if (expireError) throw expireError;
+      return output({ status: "expired", purchaseId });
     }
 
     /* STILL PENDING */
