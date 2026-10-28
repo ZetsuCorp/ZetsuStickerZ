@@ -99,12 +99,54 @@ main {
   min-height: 180px;
   border: 2px dashed #683c87;
   border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  align-content: start;
+  gap: 12px;
   color: #bba9ce;
   padding: 20px;
+}
+
+.collection-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  align-self: center;
+}
+
+.sticker-item {
+  padding: 14px;
+  border: 1px solid #843bac;
+  border-radius: 10px;
+  background: #170a29;
+  color: #fff;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.sticker-item strong {
+  display: block;
+  margin: 9px 0;
+  font-size: 15px;
+}
+
+.sticker-type {
+  font-size: 11px;
+  color: #64ffcb;
+  font-weight: bold;
+}
+
+.sticker-date {
+  margin-top: 9px;
+  font-size: 11px;
+  color: #bba9ce;
+}
+
+.sticker-item img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  border-radius: 6px;
 }
 
 .status {
@@ -214,6 +256,110 @@ const status = document.getElementById("status");
 const signin = document.getElementById("signin");
 const signout = document.getElementById("signout");
 const collection = document.getElementById("collection");
+let activeCollectionUser = null;
+
+function collectionMessage(message) {
+  collection.replaceChildren();
+  const note = document.createElement("div");
+  note.className = "collection-empty";
+  note.textContent = message;
+  collection.append(note);
+}
+
+function makeStickerCard(purchase, capsule) {
+  const card = document.createElement("article");
+  card.className = "sticker-item";
+  const info = capsule?.reward_data || {};
+  const artwork = info.image_url || info.image || info.art_url;
+  if (typeof artwork === "string" && /^https:\/\//i.test(artwork)) {
+    const img = document.createElement("img");
+    img.src = artwork;
+    img.alt = capsule.reward_name || "Sticker";
+    img.loading = "lazy";
+    card.append(img);
+  }
+
+  const label = document.createElement("div");
+  label.className = "sticker-type";
+  label.textContent = (purchase.tier || "Sticker").toUpperCase();
+
+  const name = document.createElement("strong");
+  name.textContent = capsule?.reward_name || "Collected sticker";
+
+  const date = document.createElement("div");
+  date.className = "sticker-date";
+  date.textContent = purchase.paid_at
+    ? "Collected " + new Date(purchase.paid_at).toLocaleDateString()
+    : "Collected";
+
+  card.append(label, name, date);
+  return card;
+}
+
+// Capsule purchases are the ownership ledger: one paid purchase = one item.
+async function loadCollection(user) {
+  const id = user.id;
+  activeCollectionUser = id;
+  collectionMessage("Loading your stickers...");
+
+  try {
+    const { data: session } = await client.auth.getSession();
+    const token = session?.session?.access_token;
+    if (!token) throw new Error("No Discord session");
+
+    // Read only this user's successful purchases. The table's RLS also
+    // enforces ownership; pending/expired attempts never enter collections.
+    const purchases = [];
+    for (let from = 0; ; from += 100) {
+      const { data, error } = await client
+        .from("capsule_purchases")
+        .select("id, tier, paid_at")
+        .eq("player_id", id)
+        .in("status", ["paid", "fulfilled"])
+        .order("paid_at", { ascending: false })
+        .range(from, from + 99);
+      if (error) throw error;
+      purchases.push(...(data || []));
+      if (!data || data.length < 100) break;
+    }
+
+    if (activeCollectionUser !== id) return;
+    if (!purchases.length) {
+      collectionMessage("No stickers collected yet.");
+      return;
+    }
+
+    collection.replaceChildren();
+    for (const purchase of purchases) {
+      // Reuse the authenticated verifier's existing completed-purchase
+      // lookup, avoiding new tables, public capsule reads or extra functions.
+      try {
+        const { data, error } = await client.functions.invoke("verify-capsule", {
+          method: "POST",
+          body: { purchaseId: purchase.id },
+          headers: { Authorization: "Bearer " + token }
+        });
+        if (error || !data || data.error || !data.capsule) {
+          console.error("[COLLECTION] Sticker lookup failed", purchase.id, error || data?.error);
+          continue;
+        }
+        if (activeCollectionUser !== id) return;
+        collection.append(makeStickerCard(purchase, data.capsule));
+      } catch (error) {
+        console.error("[COLLECTION] Sticker lookup failed", error);
+      }
+    }
+
+    if (activeCollectionUser === id && !collection.childElementCount) {
+      collectionMessage("Your collection could not be loaded. Please try again.");
+    }
+  } catch (error) {
+    console.error("[COLLECTION]", error);
+    if (activeCollectionUser === id) {
+      collectionMessage("Your collection could not be loaded. Please try again.");
+    }
+  }
+}
 
 // ========================================
 // DISPLAY ACCOUNT
@@ -249,8 +395,7 @@ function showAccount(user) {
     avatar.classList.add("hidden");
   }
 
-  collection.textContent =
-    "Your collected items will appear here.";
+  collectionMessage("Loading your stickers...");
 }
 
 // ========================================
@@ -268,8 +413,8 @@ function showSignedOut() {
   status.textContent =
     "Sign in with Discord to access your account.";
 
-  collection.textContent =
-    "Sign in to view your collection.";
+  activeCollectionUser = null;
+  collectionMessage("Sign in to view your collection.");
 }
 
 // ========================================
@@ -288,6 +433,7 @@ async function loadAccount() {
   const user = data.user;
 
   showAccount(user);
+  void loadCollection(user);
 
   // Read the account created by index.html.
   const { data: account, error: accountError } =
