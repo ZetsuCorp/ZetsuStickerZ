@@ -279,6 +279,7 @@ const signout = document.getElementById("signout");
 const collection = document.getElementById("collection");
 const collectionTotals = document.getElementById("collection-totals");
 let activeCollectionUser = null;
+let collectionLoadVersion = 0;
 
 function collectionMessage(message) {
   collection.replaceChildren();
@@ -321,6 +322,7 @@ function makeStickerCard(purchase, capsule) {
 // Capsule purchases are the ownership ledger: one paid purchase = one item.
 async function loadCollection(user) {
   const id = user.id;
+  const loadVersion = ++collectionLoadVersion;
   activeCollectionUser = id;
   collectionMessage("Loading your stickers...");
 
@@ -345,14 +347,18 @@ async function loadCollection(user) {
       if (!data || data.length < 100) break;
     }
 
-    if (activeCollectionUser !== id) return;
+    if (activeCollectionUser !== id || loadVersion !== collectionLoadVersion) return;
     if (!purchases.length) {
       collectionMessage("No stickers collected yet.");
       return;
     }
 
-    collection.replaceChildren();
+    const cards = [];
+    const seenPurchaseIds = new Set();
     for (const purchase of purchases) {
+      if (seenPurchaseIds.has(purchase.id)) continue;
+      seenPurchaseIds.add(purchase.id);
+      if (activeCollectionUser !== id || loadVersion !== collectionLoadVersion) return;
       // Reuse the authenticated verifier's existing completed-purchase
       // lookup, avoiding new tables, public capsule reads or extra functions.
       try {
@@ -365,19 +371,22 @@ async function loadCollection(user) {
           console.error("[COLLECTION] Sticker lookup failed", purchase.id, error || data?.error);
           continue;
         }
-        if (activeCollectionUser !== id) return;
-        collection.append(makeStickerCard(purchase, data.capsule));
+        if (activeCollectionUser !== id || loadVersion !== collectionLoadVersion) return;
+        cards.push(makeStickerCard(purchase, data.capsule));
       } catch (error) {
         console.error("[COLLECTION] Sticker lookup failed", error);
       }
     }
 
-    if (activeCollectionUser === id && !collection.childElementCount) {
+    if (activeCollectionUser !== id || loadVersion !== collectionLoadVersion) return;
+    if (cards.length) {
+      collection.replaceChildren(...cards);
+    } else {
       collectionMessage("Your collection could not be loaded. Please try again.");
     }
   } catch (error) {
     console.error("[COLLECTION]", error);
-    if (activeCollectionUser === id) {
+    if (activeCollectionUser === id && loadVersion === collectionLoadVersion) {
       collectionMessage("Your collection could not be loaded. Please try again.");
     }
   }
@@ -436,6 +445,7 @@ function showSignedOut() {
     "Sign in with Discord to access your account.";
 
   activeCollectionUser = null;
+  ++collectionLoadVersion;
   collectionTotals.textContent = "CAPSULES OPENED: — | STICKERS OWNED: —";
   collectionMessage("Sign in to view your collection.");
 }
