@@ -6,7 +6,6 @@
 <title>Sticker Mania</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
 <script src="https://unpkg.com/@solana/web3.js@1.98.4/lib/index.iife.min.js"></script>
 
 <style>
@@ -584,7 +583,8 @@ body {
         id="payment-sol">
       </div>
 
-      <canvas id="payment-qr"></canvas>
+      <p id="payment-receiver" style="font-size:11px;overflow-wrap:anywhere;user-select:all"></p>
+      <input id="payment-signature" placeholder="Transaction signature (for external wallet payments)" style="width:100%;padding:7px;margin:6px 0;color:#fff;background:#151025;border:1px solid #943bce;border-radius:5px">
 
       <p id="payment-message" role="status"></p>
 
@@ -594,13 +594,7 @@ body {
           OPEN WALLET
         </a>
 
-        <button
-          id="payment-copy"
-          type="button">
-          COPY LINK
-        </button>
-
-        <button
+<button
           id="payment-check"
           type="button">
           CHECK PAYMENT
@@ -710,10 +704,11 @@ const paymentTitle = $("payment-title");
 const paymentUsd = $("payment-usd");
 const paymentSol = $("payment-sol");
 const paymentMessage = $("payment-message");
-const paymentQr = $("payment-qr");
+const paymentReceiver = $("payment-receiver");
+const paymentSignature = $("payment-signature");
 
 const paymentWallet = $("payment-wallet");
-const paymentCopy = $("payment-copy");
+
 const paymentCheck = $("payment-check");
 const paymentBack = $("payment-back");
 
@@ -1148,39 +1143,15 @@ async function showPayment(purchase) {
     purchase.solAmount + " SOL";
 
   paymentWallet.href = purchase.paymentUrl;
+  paymentReceiver.textContent = "SEND SOL TO: " + RECEIVER;
+  paymentSignature.value = purchase.signature || "";
   paymentWallet.hidden = false;
 
-  paymentCopy.hidden = false;
   paymentCheck.hidden = false;
-  paymentQr.hidden = false;
 
   paymentBack.textContent = "BACK";
 
-  paymentStatus(
-    "Scan with a Solana Pay wallet or open the payment link."
-  );
-
-  try {
-    if (!window.QRCode) {
-      throw new Error("QR code library unavailable");
-    }
-
-    await QRCode.toCanvas(
-      paymentQr,
-      purchase.paymentUrl,
-      {
-        width: 220,
-        margin: 2
-      }
-    );
-  } catch (error) {
-    paymentQr.hidden = true;
-
-    paymentStatus(
-      "QR unavailable. Use OPEN WALLET or COPY LINK.",
-      true
-    );
-  }
+  paymentStatus("Open Phantom or send the exact SOL amount to the address above. For manual transfers, enter the transaction signature to verify.");
 
   startPolling();
 }
@@ -1200,7 +1171,7 @@ async function checkPayment() {
   try {
     const result = await invoke(
       "verify-capsule",
-      { purchaseId }
+      { purchaseId, signature: activePurchase.signature || paymentSignature.value.trim() || undefined }
     );
 
     if (
@@ -1242,9 +1213,7 @@ async function checkPayment() {
       paymentStatus(message);
 
       paymentWallet.hidden = true;
-      paymentCopy.hidden = true;
       paymentCheck.hidden = true;
-      paymentQr.hidden = true;
 
       paymentBack.textContent =
         "BACK TO CAPSULES";
@@ -1444,36 +1413,19 @@ paymentWallet.addEventListener("click", async event => {
       throw new Error("Could not get SOL blockhash: " + (detail || "No response"));
     }
     tx.recentBlockhash = block.blockhash;
-    await phantom.signAndSendTransaction(tx);
-    paymentStatus("SOL sent. Waiting for on-chain confirmation...");
+    const sent = await phantom.signAndSendTransaction(tx);
+    if (!sent?.signature) throw new Error("Phantom did not return a transaction signature");
+    activePurchase.signature = sent.signature;
+    paymentSignature.value = sent.signature;
+    savePending(activePurchase);
+    paymentStatus("SOL sent. Confirming transaction...");
+    void checkPayment();
     startPolling();
   } catch (error) {
     console.error("[PHANTOM]", error);
     paymentStatus("Phantom: " + (error.message || error), true);
   }
 });
-
-/* COPY PAYMENT LINK */
-
-paymentCopy.onclick = async () => {
-  if (!activePurchase) {
-    return;
-  }
-
-  try {
-    await navigator.clipboard.writeText(
-      activePurchase.paymentUrl
-    );
-
-    paymentStatus("Solana Pay link copied.");
-
-  } catch (error) {
-    paymentStatus(
-      "Copy failed: " + error.message,
-      true
-    );
-  }
-};
 
 /* MANUAL PAYMENT CHECK */
 
