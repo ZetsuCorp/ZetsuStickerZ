@@ -974,31 +974,37 @@ function pendingKey() {
   );
 }
 
+// Each payment keeps its own reference; previous attempts must never block
+// a new purchase or get overwritten before their reward is recovered.
+function readPending() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(pendingKey()) || "[]");
+    const list = Array.isArray(raw) ? raw : [raw]; // legacy single-payment record
+    return list.filter(p => p && typeof p.purchaseId === "string");
+  } catch (error) {
+    console.error("[PENDING PURCHASE]", error);
+    return [];
+  }
+}
+
 function savePending(purchase) {
   try {
-    localStorage.setItem(
-      pendingKey(),
-      JSON.stringify(purchase)
-    );
+    const list = readPending().filter(p => p.purchaseId !== purchase.purchaseId);
+    list.push(purchase);
+    localStorage.setItem(pendingKey(), JSON.stringify(list.slice(-20)));
   } catch (error) {
     console.error("[PENDING PURCHASE]", error);
   }
 }
 
-function readPending() {
+function clearPending(purchaseId) {
   try {
-    const raw = localStorage.getItem(pendingKey());
-
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
+    const list = readPending().filter(p => p.purchaseId !== purchaseId);
+    if (list.length) localStorage.setItem(pendingKey(), JSON.stringify(list));
+    else localStorage.removeItem(pendingKey());
+  } catch (error) {
+    console.error("[PENDING PURCHASE]", error);
   }
-}
-
-function clearPending() {
-  try {
-    localStorage.removeItem(pendingKey());
-  } catch {}
 }
 
 /* PURCHASE VALIDATION */
@@ -1068,48 +1074,37 @@ function stopPolling() {
 }
 
 async function checkPayment() {
-  if (!activePurchase || checkingPayment) return;
+  if (checkingPayment || !currentUser) return;
   checkingPayment = true;
-  const id = activePurchase.purchaseId;
   try {
-    const result = await invoke("verify-capsule", {
-      purchaseId: id,
-      ...(activePurchase.signature ? { signature: activePurchase.signature } : {})
-    });
-    if (!activePurchase || activePurchase.purchaseId !== id) return;
-    if (result.status === "paid" || result.status === "fulfilled") {
-      stopPolling();
-      activePurchase = null;
-      clearPending();
-      dispenseReward(result.capsule);
-    } else if (result.status === "expired" || result.status === "cancelled") {
-      stopPolling();
-      activePurchase = null;
-      clearPending();
+    for (const purchase of readPending()) {
+      const result = await invoke("verify-capsule", {
+        purchaseId: purchase.purchaseId,
+        ...(purchase.signature ? { signature: purchase.signature } : {})
+      });
+      if (result.status === "paid" || result.status === "fulfilled") {
+        clearPending(purchase.purchaseId);
+        dispenseReward(result.capsule);
+      } else if (result.status === "expired" || result.status === "cancelled") {
+        clearPending(purchase.purchaseId);
+      }
     }
   } catch (error) {
     console.error("[CAPSULE VERIFICATION]", error);
+    if (!purchaseOverlay.hidden && !purchasing) {
+      purchaseStatus.textContent = "Payment check error: " + (error?.message || error);
+    }
   } finally {
     checkingPayment = false;
   }
 }
 
 function startPolling() {
-  stopPolling();
-  if (!activePurchase) return;
-  const started = Date.now();
+  if (paymentTimer !== null || !readPending().length) return;
+  const began = Date.now();
   void checkPayment();
   paymentTimer = setInterval(() => {
-    if (!activePurchase) { stopPolling(); return; }
-    if (!activePurchase.signature && purchaseExpired(activePurchase)) {
-      stopPolling();
-      clearPending();
-      activePurchase = null;
-      return;
-    }
-    // A submitted payment can confirm after checkout expires.
-    // Keep its signature for automatic recovery on the next visit.
-    if (activePurchase.signature && Date.now() - started > 180000) {
+    if (!readPending().length || Date.now() - began > 180000) {
       stopPolling();
       return;
     }
@@ -1118,15 +1113,7 @@ function startPolling() {
 }
 
 function resumePendingPayment() {
-  if (activePurchase || !currentUser) return;
-  const pending = readPending();
-  if (!pending?.purchaseId) return;
-  if (!pending.signature && purchaseExpired(pending)) {
-    clearPending();
-    return;
-  }
-  activePurchase = pending;
-  startPolling();
+  if (currentUser && readPending().length) startPolling();
 }
 
 function closePurchase() {
@@ -1142,7 +1129,7 @@ function openPurchase() {
 }
 
 async function buyCapsule(tier) {
-  if (purchasing || (activePurchase && activePurchase.signature)) return;
+  if (purchasing) return;
   if (!Object.prototype.hasOwnProperty.call(CAPSULE_PRICES, tier)) return;
   if (!currentUser) { closePurchase(); openAuth(); return; }
 
@@ -1169,7 +1156,6 @@ async function buyCapsule(tier) {
       paymentUrl: result.paymentUrl,
       expiresAt: result.expiresAt
     };
-    activePurchase = purchase;
     savePending(purchase);
 
     if (!phantom) {
