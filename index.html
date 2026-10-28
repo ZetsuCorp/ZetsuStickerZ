@@ -584,7 +584,6 @@ body {
       </div>
 
       <p id="payment-receiver" style="font-size:11px;overflow-wrap:anywhere;user-select:all"></p>
-      <input id="payment-signature" placeholder="Transaction signature (for external wallet payments)" style="width:100%;padding:7px;margin:6px 0;color:#fff;background:#151025;border:1px solid #943bce;border-radius:5px">
 
       <p id="payment-message" role="status"></p>
 
@@ -705,7 +704,6 @@ const paymentUsd = $("payment-usd");
 const paymentSol = $("payment-sol");
 const paymentMessage = $("payment-message");
 const paymentReceiver = $("payment-receiver");
-const paymentSignature = $("payment-signature");
 
 const paymentWallet = $("payment-wallet");
 
@@ -1121,7 +1119,7 @@ function startPolling() {
 
   paymentTimer = setInterval(() => {
     if (!activePurchase || purchaseOverlay.hidden || paymentPanel.hidden) return;
-    if (purchaseExpired(activePurchase) && !activePurchase.signature && !paymentSignature.value.trim()) {
+    if (purchaseExpired(activePurchase) && !activePurchase.signature) {
       stopPolling();
       paymentWallet.hidden = true;
       paymentStatus("Checkout expired. Select a capsule to start again.", true);
@@ -1148,16 +1146,19 @@ async function showPayment(purchase) {
     purchase.solAmount + " SOL";
 
   paymentWallet.href = purchase.paymentUrl;
-  paymentReceiver.textContent = "SEND SOL TO: " + RECEIVER;
-  paymentSignature.value = purchase.signature || "";
+  paymentReceiver.textContent = "RECEIVING WALLET: " + RECEIVER;
   paymentWallet.hidden = false;
 
   paymentCheck.hidden = false;
 
   paymentBack.textContent = "BACK";
 
-  paymentStatus("Open Phantom or send the exact SOL amount to the address above. For manual transfers, enter the transaction signature to verify.");
-  if (purchaseExpired(purchase) && !purchase.signature) {
+  paymentStatus("Open Phantom to approve the payment. Verification is automatic.");
+  if (purchase.signature) {
+    paymentWallet.hidden = true;
+    paymentStatus("Payment submitted. Checking Solana confirmation...");
+    startPolling();
+  } else if (purchaseExpired(purchase)) {
     paymentWallet.hidden = true;
     paymentStatus("Checkout expired. Select a capsule to start again.", true);
   } else {
@@ -1180,7 +1181,7 @@ async function checkPayment() {
   try {
     const result = await invoke(
       "verify-capsule",
-      { purchaseId, signature: activePurchase.signature || paymentSignature.value.trim() || undefined }
+      { purchaseId, signature: activePurchase.signature || undefined }
     );
 
     if (
@@ -1347,6 +1348,13 @@ function openPurchase() {
   stopPolling();
   activePurchase = null;
 
+  const pending = readPending();
+  if (pending?.purchaseId && pending.signature) {
+    void showPayment(pending);
+  } else if (pending && purchaseExpired(pending)) {
+    clearPending();
+  }
+
   updateSOLPrice();
 }
 
@@ -1382,7 +1390,7 @@ tierButtons.forEach(button => {
 /* WALLET */
 
 paymentWallet.addEventListener("click", async event => {
-  if (!activePurchase || purchaseExpired(activePurchase)) {
+  if (!activePurchase || purchaseExpired(activePurchase) || activePurchase.signature) {
     event.preventDefault();
     paymentStatus("Checkout expired. Select a capsule to start again.", true);
     return;
@@ -1434,8 +1442,8 @@ paymentWallet.addEventListener("click", async event => {
     const sent = await phantom.signAndSendTransaction(tx);
     if (!sent?.signature) throw new Error("Phantom did not return a transaction signature");
     activePurchase.signature = sent.signature;
-    paymentSignature.value = sent.signature;
     savePending(activePurchase);
+    paymentWallet.hidden = true;
     paymentStatus("SOL sent. Confirming transaction...");
     void checkPayment();
     startPolling();
