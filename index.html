@@ -1304,9 +1304,18 @@ function dispenseReward(capsule) {
     "display:grid;place-items:center;padding:5px;border:2px solid #64ffcb;" +
     "border-radius:10px;background:#140829;color:#64ffcb;" +
     "font-weight:bold;font-size:clamp(9px,1.5vw,16px);" +
-    "text-align:center;overflow-wrap:anywhere;box-shadow:0 0 22px #8c46ff";
+    "text-align:center;overflow-wrap:anywhere;box-shadow:0 0 22px #8c46ff;" +
+    "transition:opacity .45s ease";
   dispenser.replaceChildren(reward);
   dispenser.setAttribute("aria-live", "polite");
+
+  setTimeout(() => {
+    if (reward.parentNode !== dispenser) return;
+    reward.style.opacity = "0";
+    setTimeout(() => {
+      if (reward.parentNode === dispenser) reward.remove();
+    }, 450);
+  }, 3500);
 }
 
 function stopPolling() {
