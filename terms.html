@@ -10,19 +10,17 @@
 body{margin:0;min-height:100vh;background:#090515;color:#f7efff;font:16px/1.65 Arial,sans-serif}
 a{color:#64ffcb}
 a:focus-visible{outline:2px solid #64ffcb;outline-offset:3px}
-header{padding:16px clamp(16px,4vw,30px);border-bottom:4px solid transparent;background:linear-gradient(#180c2b,#180c2b) padding-box,linear-gradient(110deg,#28efff,#9f5fff,#ff71da,#fff3a1,#5fffe2,#7989ff,#28efff) border-box;background-size:100% 100%,280% 280%;animation:shimmer 6s ease-in-out infinite}
+header{padding:16px clamp(16px,4vw,30px);border-bottom:4px solid transparent;background:linear-gradient(#180c2b,#180c2b) padding-box,linear-gradient(110deg,#28efff,#9f5fff,#ff71da,#fff3a1,#5fffe2,#7989ff,#28efff) border-box;background-size:100% 100%,100% 100%}
 .top-inner{max-width:860px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .brand{color:white;font-size:19px;font-weight:900;letter-spacing:.04em;text-decoration:none}
 main{max-width:880px;margin:36px auto;padding:0 16px}
-article{border:4px solid transparent;border-radius:18px;padding:clamp(18px,4vw,38px);background:linear-gradient(#211035,#211035) padding-box,linear-gradient(110deg,#28efff,#9f5fff,#ff71da,#fff3a1,#5fffe2,#7989ff,#28efff) border-box;background-size:100% 100%,280% 280%;animation:shimmer 6s ease-in-out infinite;box-shadow:0 0 13px rgba(38,235,255,.35),0 0 30px rgba(186,77,255,.25)}
+article{border:4px solid transparent;border-radius:18px;padding:clamp(18px,4vw,38px);background:linear-gradient(#211035,#211035) padding-box,linear-gradient(110deg,#28efff,#9f5fff,#ff71da,#fff3a1,#5fffe2,#7989ff,#28efff) border-box;background-size:100% 100%,100% 100%;box-shadow:0 0 13px rgba(38,235,255,.35),0 0 30px rgba(186,77,255,.25)}
 h1{font-size:clamp(28px,5vw,38px);line-height:1.2;margin:0 0 4px}
 h2{font-size:19px;color:#64ffcb;margin:28px 0 6px}
 p{margin:10px 0}
 li{margin:6px 0}
 .date{font-size:13px;color:#c7b3d8}
 footer{color:#c7b3d8;font-size:13px;padding:0 16px 30px;text-align:center}
-@keyframes shimmer{0%,100%{background-position:center,0% 50%}50%{background-position:center,100% 50%}}
-@media(prefers-reduced-motion:reduce){header,article{animation:none}}
 </style>
 </head>
 <body>
