@@ -88,6 +88,35 @@ body {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
+/* GLOBAL VOLUME CONTROL — available during capsule videos */
+.app-volume {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 7px;
+  border: 1px solid rgba(148,59,206,.65);
+  border-radius: 9px;
+  background: rgba(9,5,26,.78);
+}
+.app-volume button {
+  border: 0;
+  background: none;
+  color: white;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 3px;
+}
+.app-volume input {
+  width: 74px;
+  accent-color: #64ffcb;
+  cursor: pointer;
+}
+
 /* CAPSULE OPENING VIDEO */
 .sticker-video-overlay {
   position: fixed;
@@ -498,6 +527,11 @@ body {
 
 <body>
 
+<div class="app-volume" aria-label="App sound">
+  <button type="button" id="app-volume-toggle" aria-label="Mute sound" title="Mute sound">🔊</button>
+  <input id="app-volume-level" type="range" min="0" max="100" value="80" aria-label="Volume">
+</div>
+
 <!-- VENDING MACHINE -->
 
 <main class="arcade-viewport">
@@ -558,7 +592,7 @@ body {
 <div class="sticker-video-overlay" id="sticker-video-overlay" hidden>
   <video id="sticker-video"
     src="assets/Machines_sifting_as_lights_dance_20261011202211.mp4"
-    playsinline muted preload="auto"></video>
+    playsinline preload="auto"></video>
 </div>
 
 <!-- CAPSULE PURCHASE MENU -->
@@ -706,6 +740,56 @@ const purchaseClose = $("purchase-close");
 const purchaseStatus = $("purchase-status");
 
 const dispenser = $("dispenser-container");
+
+/* Shared app audio preference; all app sounds can use this setting. */
+const volumeToggle = $("app-volume-toggle");
+const volumeLevel = $("app-volume-level");
+const volumeVideo = $("sticker-video");
+const SOUND_PREF = "sticker_mania_volume";
+
+let appVolume = 0.8;
+let appMuted = false;
+try {
+  const saved = JSON.parse(localStorage.getItem(SOUND_PREF) || "null");
+  if (saved && Number.isFinite(saved.volume)) {
+    appVolume = Math.max(0, Math.min(1, saved.volume));
+    appMuted = !!saved.muted;
+  }
+} catch (error) {
+  console.warn("[AUDIO PREFERENCE]", error);
+}
+function applyAppVolume() {
+  volumeVideo.volume = appVolume;
+  volumeVideo.muted = appMuted || appVolume === 0;
+  volumeLevel.value = String(Math.round(appVolume * 100));
+  const muted = volumeVideo.muted;
+  volumeToggle.textContent = muted ? "🔇" : "🔊";
+  volumeToggle.setAttribute("aria-label", muted ? "Unmute sound" : "Mute sound");
+  volumeToggle.title = muted ? "Unmute sound" : "Mute sound";
+  volumeToggle.setAttribute("aria-pressed", String(muted));
+  try {
+    localStorage.setItem(SOUND_PREF, JSON.stringify({
+      volume: appVolume, muted: appMuted
+    }));
+  } catch (error) {
+    console.warn("[AUDIO PREFERENCE]", error);
+  }
+}
+volumeToggle.onclick = () => {
+  if (appMuted || appVolume === 0) {
+    if (appVolume === 0) appVolume = 0.8;
+    appMuted = false;
+  } else {
+    appMuted = true;
+  }
+  applyAppVolume();
+};
+volumeLevel.oninput = () => {
+  appVolume = Number(volumeLevel.value) / 100;
+  appMuted = appVolume === 0;
+  applyAppVolume();
+};
+applyAppVolume();
 
 const authOverlay = $("auth-overlay");
 const authButton = $("discord-auth");
@@ -1148,6 +1232,7 @@ function playStickerOpening() {
     video.onerror = finish;
     overlay.hidden = false;
     try {
+      applyAppVolume();
       video.currentTime = 0;
       const playing = video.play();
       if (playing && typeof playing.catch === "function") playing.catch(finish);
