@@ -567,48 +567,7 @@ body {
       role="status">
     </p>
 
-    <!-- SOLANA PAY -->
 
-    <section
-      class="payment-panel"
-      id="payment-panel"
-      hidden>
-
-      <h2 id="payment-title">SOLANA PAY</h2>
-
-      <p id="payment-usd"></p>
-
-      <div
-        class="payment-amount"
-        id="payment-sol">
-      </div>
-
-      <p id="payment-receiver" style="font-size:11px;overflow-wrap:anywhere;user-select:all"></p>
-
-      <p id="payment-message" role="status"></p>
-
-      <div class="payment-actions">
-
-        <a id="payment-wallet" href="#">
-          OPEN WALLET
-        </a>
-
-<button
-          id="payment-check"
-          type="button">
-          CHECK PAYMENT
-        </button>
-
-        <button
-          id="payment-back"
-          class="secondary"
-          type="button">
-          BACK
-        </button>
-
-      </div>
-
-    </section>
 
   </div>
 </div>
@@ -666,7 +625,7 @@ const ACCOUNT_URL =
   new URL("account.html", window.location.href).href;
 
 const PRICE_REFRESH_MS = 60000;
-const PAYMENT_CHECK_MS = 6000;
+const PAYMENT_CHECK_MS = 2000;
 
 const client = window.supabase.createClient(
   SUPABASE_URL,
@@ -698,17 +657,7 @@ const purchaseOverlay = $("purchase-overlay");
 const purchaseClose = $("purchase-close");
 const purchaseStatus = $("purchase-status");
 
-const paymentPanel = $("payment-panel");
-const paymentTitle = $("payment-title");
-const paymentUsd = $("payment-usd");
-const paymentSol = $("payment-sol");
-const paymentMessage = $("payment-message");
-const paymentReceiver = $("payment-receiver");
-
-const paymentWallet = $("payment-wallet");
-
-const paymentCheck = $("payment-check");
-const paymentBack = $("payment-back");
+const dispenser = $("dispenser-container");
 
 const authOverlay = $("auth-overlay");
 const authButton = $("discord-auth");
@@ -943,6 +892,7 @@ client.auth.onAuthStateChange(
 
       setTimeout(() => {
         void syncAccount(user);
+        resumePendingPayment();
       }, 0);
     }
   }
@@ -959,6 +909,7 @@ async function restoreUser() {
   currentUser = data?.user || null;
 
   updateLoginDisplay();
+  resumePendingPayment();
 }
 
 void restoreUser();
@@ -1092,383 +1043,203 @@ function validatePurchase(data, tier) {
   }
 }
 
-/* PAYMENT DISPLAY */
-
-function paymentStatus(message, error = false) {
-  paymentMessage.textContent = message;
-
-  paymentMessage.classList.toggle(
-    "payment-error",
-    error
-  );
-}
-
-function stopPolling() {
-  if (paymentTimer !== null) {
-    clearInterval(paymentTimer);
-    paymentTimer = null;
-  }
-}
+/* INSTANT CAPSULE CHECKOUT — NO PAYMENT SCREEN */
 
 function purchaseExpired(purchase) {
   return !!purchase?.expiresAt && Date.now() >= Date.parse(purchase.expiresAt);
 }
 
+function dispenseReward(capsule) {
+  const reward = document.createElement("div");
+  reward.textContent = capsule?.reward_name || "CAPSULE DISPENSED";
+  reward.style.cssText =
+    "position:absolute;left:0;top:-90%;width:100%;min-height:125%;" +
+    "display:grid;place-items:center;padding:5px;border:2px solid #64ffcb;" +
+    "border-radius:10px;background:#140829;color:#64ffcb;" +
+    "font-weight:bold;font-size:clamp(9px,1.5vw,16px);" +
+    "text-align:center;overflow-wrap:anywhere;box-shadow:0 0 22px #8c46ff";
+  dispenser.replaceChildren(reward);
+  dispenser.setAttribute("aria-live", "polite");
+}
+
+function stopPolling() {
+  if (paymentTimer !== null) clearInterval(paymentTimer);
+  paymentTimer = null;
+}
+
+async function checkPayment() {
+  if (!activePurchase || checkingPayment) return;
+  checkingPayment = true;
+  const id = activePurchase.purchaseId;
+  try {
+    const result = await invoke("verify-capsule", {
+      purchaseId: id,
+      ...(activePurchase.signature ? { signature: activePurchase.signature } : {})
+    });
+    if (!activePurchase || activePurchase.purchaseId !== id) return;
+    if (result.status === "paid" || result.status === "fulfilled") {
+      stopPolling();
+      activePurchase = null;
+      clearPending();
+      dispenseReward(result.capsule);
+    } else if (result.status === "expired" || result.status === "cancelled") {
+      stopPolling();
+      activePurchase = null;
+      clearPending();
+    }
+  } catch (error) {
+    console.error("[CAPSULE VERIFICATION]", error);
+  } finally {
+    checkingPayment = false;
+  }
+}
+
 function startPolling() {
   stopPolling();
-
+  if (!activePurchase) return;
+  const started = Date.now();
+  void checkPayment();
   paymentTimer = setInterval(() => {
-    if (!activePurchase || purchaseOverlay.hidden || paymentPanel.hidden) return;
-    if (purchaseExpired(activePurchase) && !activePurchase.signature) {
+    if (!activePurchase) { stopPolling(); return; }
+    if (!activePurchase.signature && purchaseExpired(activePurchase)) {
       stopPolling();
-      paymentWallet.hidden = true;
-      paymentStatus("Checkout expired. Select a capsule to start again.", true);
+      clearPending();
+      activePurchase = null;
+      return;
+    }
+    // A submitted payment can confirm after checkout expires.
+    // Keep its signature for automatic recovery on the next visit.
+    if (activePurchase.signature && Date.now() - started > 180000) {
+      stopPolling();
       return;
     }
     void checkPayment();
   }, PAYMENT_CHECK_MS);
 }
 
-async function showPayment(purchase) {
-  activePurchase = purchase;
-
-  paymentPanel.hidden = false;
-
-  paymentTitle.textContent =
-    purchase.tier.toUpperCase() + " CAPSULE";
-
-  paymentUsd.textContent =
-    "$" +
-    Number(purchase.priceUsd).toFixed(2) +
-    " USD";
-
-  paymentSol.textContent =
-    purchase.solAmount + " SOL";
-
-  paymentWallet.href = purchase.paymentUrl;
-  paymentReceiver.textContent = "RECEIVING WALLET: " + RECEIVER;
-  paymentWallet.hidden = false;
-
-  paymentCheck.hidden = false;
-
-  paymentBack.textContent = "BACK";
-
-  paymentStatus("Open Phantom to approve the payment. Verification is automatic.");
-  if (purchase.signature) {
-    paymentWallet.hidden = true;
-    paymentStatus("Payment submitted. Checking Solana confirmation...");
-    startPolling();
-  } else if (purchaseExpired(purchase)) {
-    paymentWallet.hidden = true;
-    paymentStatus("Checkout expired. Select a capsule to start again.", true);
-  } else {
-    startPolling();
-  }
-}
-
-/* VERIFY PAYMENT */
-
-async function checkPayment() {
-  if (!activePurchase || checkingPayment) {
-    return;
-  }
-
-  checkingPayment = true;
-  paymentCheck.disabled = true;
-
-  const purchaseId = activePurchase.purchaseId;
-
-  try {
-    const result = await invoke(
-      "verify-capsule",
-      { purchaseId, signature: activePurchase.signature || undefined }
-    );
-
-    if (
-      !activePurchase ||
-      activePurchase.purchaseId !== purchaseId
-    ) {
-      return;
-    }
-
-    if (
-      result.status === "paid" ||
-      result.status === "fulfilled"
-    ) {
-      stopPolling();
-      clearPending();
-
-      const reward = result.capsule;
-
-      paymentTitle.textContent = "CAPSULE OPENED";
-
-      paymentSol.textContent =
-        reward?.reward_name || "Reward selected";
-
-      const rewardType = reward?.reward_type || "";
-
-      let message =
-        "REWARD: " +
-        (reward?.reward_name || "Unknown") +
-        "\nTYPE: " +
-        rewardType.toUpperCase();
-
-      if (
-        rewardType === "nft" ||
-        rewardType === "crypto"
-      ) {
-        message += "\nDelivery pending.";
-      }
-
-      paymentStatus(message);
-
-      paymentWallet.hidden = true;
-      paymentCheck.hidden = true;
-
-      paymentBack.textContent =
-        "BACK TO CAPSULES";
-
-      return;
-    }
-
-    if (result.status === "expired") {
-      stopPolling();
-      paymentWallet.hidden = true;
-      clearPending();
-      paymentStatus("Checkout expired. Select a capsule to start again.", true);
-      return;
-    }
-
-    if (result.status === "pending") {
-      paymentStatus(
-        result.message ||
-        "Waiting for Solana payment confirmation..."
-      );
-
-      return;
-    }
-
-    paymentStatus(
-      "Purchase status: " + result.status,
-      true
-    );
-
-  } catch (error) {
-    console.error("[VERIFY]", error);
-
-    paymentStatus(
-      "Verification error: " + error.message,
-      true
-    );
-
-  } finally {
-    checkingPayment = false;
-    paymentCheck.disabled = false;
-  }
-}
-
-/* CREATE PURCHASE */
-
-async function buyCapsule(tier) {
-  if (purchasing) {
-    return;
-  }
-
-  if (
-    !Object.prototype.hasOwnProperty.call(
-      CAPSULE_PRICES,
-      tier
-    )
-  ) {
-    return;
-  }
-
-  if (!currentUser) {
-    closePurchase();
-    openAuth();
-    return;
-  }
-
-  purchasing = true;
-
-  tierButtons.forEach(button => {
-    button.disabled = true;
-  });
-
-  purchaseStatus.textContent = "CREATING PURCHASE...";
-
-  try {
-    const result = await invoke(
-      "purchase-capsule",
-      { tier }
-    );
-
-    validatePurchase(result, tier);
-
-    const purchase = {
-      purchaseId: result.purchaseId,
-      tier,
-      priceUsd: result.priceUsd,
-      solUsd: result.solUsd,
-      solAmount: result.solAmount,
-      paymentUrl: result.paymentUrl,
-      reference: result.reference,
-      expiresAt: result.expiresAt
-    };
-
-    savePending(purchase);
-
-    purchaseStatus.textContent = "";
-
-    await showPayment(purchase);
-
-  } catch (error) {
-    console.error("[PURCHASE]", error);
-
-    purchaseStatus.textContent =
-      "PURCHASE ERROR: " + error.message;
-
-  } finally {
-    purchasing = false;
-
-    tierButtons.forEach(button => {
-      button.disabled = false;
-    });
-  }
-}
-
-/* PURCHASE MENU */
-
-function openPurchase() {
-  purchaseOverlay.hidden = false;
-  paymentPanel.hidden = true;
-
-  purchaseStatus.textContent = "";
-
-  stopPolling();
-  activePurchase = null;
-
+function resumePendingPayment() {
+  if (activePurchase || !currentUser) return;
   const pending = readPending();
-  if (pending?.purchaseId && pending.signature) {
-    void showPayment(pending);
-  } else if (pending && purchaseExpired(pending)) {
+  if (!pending?.purchaseId) return;
+  if (!pending.signature && purchaseExpired(pending)) {
     clearPending();
+    return;
   }
-
-  updateSOLPrice();
+  activePurchase = pending;
+  startPolling();
 }
 
 function closePurchase() {
-  stopPolling();
-
   purchaseOverlay.hidden = true;
-  paymentPanel.hidden = true;
-
   purchaseStatus.textContent = "";
-
   payButton.focus();
 }
 
-payButton.onclick = openPurchase;
+function openPurchase() {
+  purchaseOverlay.hidden = false;
+  purchaseStatus.textContent = "";
+  updateSOLPrice();
+}
 
-purchaseClose.onclick = closePurchase;
+async function buyCapsule(tier) {
+  if (purchasing || (activePurchase && activePurchase.signature)) return;
+  if (!Object.prototype.hasOwnProperty.call(CAPSULE_PRICES, tier)) return;
+  if (!currentUser) { closePurchase(); openAuth(); return; }
 
-purchaseOverlay.onclick = event => {
-  if (event.target === purchaseOverlay) {
-    closePurchase();
-  }
-};
+  purchasing = true;
+  tierButtons.forEach(button => { button.disabled = true; });
+  purchaseStatus.textContent = "OPENING PHANTOM...";
 
-/* CAPSULE BUTTONS */
-
-tierButtons.forEach(button => {
-  button.onclick = () => {
-    void buyCapsule(button.dataset.tier);
-  };
-});
-
-/* WALLET */
-
-paymentWallet.addEventListener("click", async event => {
-  if (!activePurchase || purchaseExpired(activePurchase) || activePurchase.signature) {
-    event.preventDefault();
-    paymentStatus("Checkout expired. Select a capsule to start again.", true);
-    return;
-  }
-
-  // Desktop: launch an actual Phantom extension transaction.
-  const phantom = window.phantom?.solana;
-  if (!phantom?.isPhantom) {
-    // Mobile: retain the standard Solana Pay wallet link and QR fallback.
-    return;
-  }
-  event.preventDefault();
-
+  let purchase = null;
   try {
-    const web3 = window.solanaWeb3;
-    if (!web3) throw new Error("Solana transaction library unavailable");
+    const phantom = window.phantom?.solana ||
+      (window.solana?.isPhantom ? window.solana : null);
 
-    paymentStatus("Opening Phantom...");
-    const { publicKey } = await phantom.connect();
-    const tx = new web3.Transaction();
-    const lamports = BigInt(
-      Math.round(Number(activePurchase.solAmount) * 1_000_000_000)
-    );
-    if (lamports <= 0n || lamports > BigInt(Number.MAX_SAFE_INTEGER)) {
+    // Connect immediately from the capsule click to preserve wallet activation.
+    const wallet = phantom ? await phantom.connect() : null;
+
+    const result = await invoke("purchase-capsule", { tier });
+    validatePurchase(result, tier);
+    purchase = {
+      purchaseId: result.purchaseId,
+      tier,
+      priceUsd: result.priceUsd,
+      solAmount: result.solAmount,
+      reference: result.reference,
+      paymentUrl: result.paymentUrl,
+      expiresAt: result.expiresAt
+    };
+    activePurchase = purchase;
+    savePending(purchase);
+
+    if (!phantom) {
+      // Solana Pay link is the mobile wallet fallback; no QR or second button.
+      closePurchase();
+      startPolling();
+      window.location.href = purchase.paymentUrl;
+      return;
+    }
+
+    const web3 = window.solanaWeb3;
+    if (!web3) throw new Error("Solana web3.js was not loaded");
+    if (purchaseExpired(purchase)) throw new Error("Payment window expired");
+
+    const lamports = Math.round(Number(purchase.solAmount) * 1_000_000_000);
+    if (!Number.isSafeInteger(lamports) || lamports <= 0) {
       throw new Error("Invalid SOL amount");
     }
 
     const transfer = web3.SystemProgram.transfer({
-      fromPubkey: publicKey,
+      fromPubkey: wallet.publicKey,
       toPubkey: new web3.PublicKey(RECEIVER),
-      lamports: Number(lamports)
+      lamports
     });
+    // Solana Pay's read-only, non-signer reference on the transfer.
     transfer.keys.push({
-      pubkey: new web3.PublicKey(activePurchase.reference),
+      pubkey: new web3.PublicKey(purchase.reference),
       isSigner: false,
       isWritable: false
     });
-    tx.add(transfer);
-    tx.feePayer = publicKey;
-    // Request a fresh blockhash from the backend to avoid browser RPC 403/CORS.
+    const tx = new web3.Transaction().add(transfer);
+    tx.feePayer = wallet.publicKey;
+
     const { data: block, error: blockError } = await client.functions.invoke(
       "solana-blockhash", { method: "POST", body: {} }
     );
     if (blockError || !block?.blockhash) {
-      const detail = blockError ? await functionError(blockError) : block?.error;
-      throw new Error("Could not get SOL blockhash: " + (detail || "No response"));
+      throw new Error(blockError ? await functionError(blockError) : "SOL RPC unavailable");
     }
+    if (purchaseExpired(purchase)) throw new Error("Payment window expired");
     tx.recentBlockhash = block.blockhash;
+
+    // Phantom handles authorization, signing and broadcasting.
     const sent = await phantom.signAndSendTransaction(tx);
-    if (!sent?.signature) throw new Error("Phantom did not return a transaction signature");
-    activePurchase.signature = sent.signature;
-    savePending(activePurchase);
-    paymentWallet.hidden = true;
-    paymentStatus("SOL sent. Confirming transaction...");
-    void checkPayment();
+    if (!sent?.signature) throw new Error("Phantom did not return a transaction");
+    purchase.signature = sent.signature;
+    savePending(purchase);
+    closePurchase();
+
+    // Verify against the merchant wallet without displaying another screen.
     startPolling();
   } catch (error) {
-    console.error("[PHANTOM]", error);
-    paymentStatus("Phantom: " + (error.message || error), true);
+    console.error("[CAPSULE PAYMENT]", error);
+    purchaseStatus.textContent = error?.message || "Wallet payment failed";
+    // If submission was interrupted, still check the reference for a late transfer.
+    if (purchase && !purchase.signature) startPolling();
+  } finally {
+    purchasing = false;
+    tierButtons.forEach(button => { button.disabled = false; });
   }
+}
+
+payButton.onclick = openPurchase;
+purchaseClose.onclick = closePurchase;
+purchaseOverlay.onclick = event => {
+  if (event.target === purchaseOverlay) closePurchase();
+};
+tierButtons.forEach(button => {
+  button.onclick = () => { void buyCapsule(button.dataset.tier); };
 });
-
-/* MANUAL PAYMENT CHECK */
-
-paymentCheck.onclick = () => {
-  void checkPayment();
-};
-
-/* BACK TO CAPSULE SELECTION */
-
-paymentBack.onclick = () => {
-  stopPolling();
-
-  paymentPanel.hidden = true;
-  purchaseStatus.textContent = "";
-
-  activePurchase = null;
-};
 
 /* ESCAPE KEY */
 
