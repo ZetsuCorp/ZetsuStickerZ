@@ -29,6 +29,7 @@ body {
 /* VENDING MACHINE */
 
 .arcade-viewport {
+  min-height: 100svh;
   min-height: 100dvh;
   display: flex;
   justify-content: center;
@@ -44,8 +45,9 @@ body {
 
 .arcade-container {
   position: relative;
-  width: min(100%, 900px, calc(100dvh - 24px));
+  width: min(100%, 900px, calc(100svh - 24px));
   aspect-ratio: 1 / 1;
+  flex: 0 0 auto;
   border: 2px solid #543184;
   border-radius: 18px;
   overflow: hidden;
@@ -90,14 +92,15 @@ body {
 
 /* GLOBAL VOLUME CONTROL — available during capsule videos */
 .app-volume {
-  position: fixed;
-  top: 12px;
-  right: 12px;
+  position: absolute;
+  top: 36px;
+  right: 8px;
   z-index: 60;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 7px;
+  gap: 5px;
+  width: min(152px, 40%);
+  padding: 3px 6px;
   border: 1px solid rgba(148,59,206,.65);
   border-radius: 9px;
   background: rgba(9,5,26,.78);
@@ -106,13 +109,16 @@ body {
   border: 0;
   background: none;
   color: white;
-  font-size: 20px;
+  font-size: clamp(14px, 2vmin, 20px);
   line-height: 1;
   cursor: pointer;
-  padding: 3px;
+  padding: 2px;
+  flex: 0 0 auto;
 }
 .app-volume input {
-  width: 74px;
+  flex: 1 1 auto;
+  width: 0;
+  min-width: 0;
   accent-color: #64ffcb;
   cursor: pointer;
 }
@@ -310,8 +316,8 @@ body {
 
 .purchase-modal {
   position: relative;
-  width: min(94vw, 760px, 132dvh);
-  max-height: 88dvh;
+  width: min(94vw, 760px, 88svh);
+  max-height: 88svh;
   border: 2px solid #bd3aff;
   border-radius: 14px;
   background: #080412;
@@ -463,9 +469,27 @@ body {
   }
 
   .arcade-container {
-    width: min(100%, calc(100dvh - 8px));
+    width: min(100%, calc(100svh - 8px));
     border-width: 1px;
     border-radius: 8px;
+  }
+
+  .app-volume {
+    top: 25px;
+    right: 4px;
+    width: min(120px, 39%);
+    padding: 2px 4px;
+    gap: 3px;
+    border-radius: 6px;
+  }
+
+  .app-volume button {
+    font-size: 15px;
+    padding: 1px;
+  }
+
+  .buy-log {
+    font-size: clamp(7px, 1.25vw, 9px);
   }
 
   .sol-price-tag,
@@ -498,7 +522,7 @@ body {
   }
 
   .purchase-modal {
-    width: min(98vw, 132dvh);
+    width: min(98vw, 88svh);
     border-radius: 7px;
     border-width: 1px;
   }
@@ -527,11 +551,6 @@ body {
 
 <body>
 
-<div class="app-volume" aria-label="App sound">
-  <button type="button" id="app-volume-toggle" aria-label="Mute sound" title="Mute sound">🔊</button>
-  <input id="app-volume-level" type="range" min="0" max="100" value="80" aria-label="Volume">
-</div>
-
 <!-- VENDING MACHINE -->
 
 <main class="arcade-viewport">
@@ -548,6 +567,11 @@ body {
         class="sol-price-tag"
         id="sol-price-main"
         title="Current SOL price in USD">SOL LOADING...</span>
+
+      <div class="app-volume" aria-label="App sound">
+        <button type="button" id="app-volume-toggle" aria-label="Mute sound" title="Mute sound">🔊</button>
+        <input id="app-volume-level" type="range" min="0" max="100" value="80" aria-label="Volume">
+      </div>
 
       <div
         class="dispenser-container"
