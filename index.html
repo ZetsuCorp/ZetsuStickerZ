@@ -88,6 +88,28 @@ body {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
+/* CAPSULE OPENING VIDEO */
+.sticker-video-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background: rgba(5, 2, 11, 0.94);
+}
+.sticker-video-overlay[hidden] { display: none; }
+.sticker-video-overlay video {
+  display: block;
+  max-width: 100%;
+  max-height: 92dvh;
+  width: auto;
+  height: auto;
+  border-radius: 12px;
+  object-fit: contain;
+}
+
 /* SOL PRICE LABELS */
 
 .sol-price-tag,
@@ -531,6 +553,13 @@ body {
     </div>
   </div>
 </main>
+
+<!-- CAPSULE OPENING ANIMATION -->
+<div class="sticker-video-overlay" id="sticker-video-overlay" hidden>
+  <video id="sticker-video"
+    src="assets/Machines_sifting_as_lights_dance_20261011202211.mp4"
+    playsinline muted preload="auto"></video>
+</div>
 
 <!-- CAPSULE PURCHASE MENU -->
 
@@ -1094,6 +1123,48 @@ function purchaseExpired(purchase) {
   return !!purchase?.expiresAt && Date.now() >= Date.parse(purchase.expiresAt);
 }
 
+/* Verified purchase: play the machine animation before revealing the sticker.
+   Queue clips so simultaneous confirmations never hide each other. */
+let stickerRevealQueue = Promise.resolve();
+
+function playStickerOpening() {
+  return new Promise(resolve => {
+    const overlay = $("sticker-video-overlay");
+    const video = $("sticker-video");
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(watchdog);
+      video.onended = null;
+      video.onerror = null;
+      video.pause();
+      overlay.hidden = true;
+      resolve();
+    };
+    // Never withhold a purchased sticker due to failed or stalled playback.
+    const watchdog = setTimeout(finish, 90000);
+    video.onended = finish;
+    video.onerror = finish;
+    overlay.hidden = false;
+    try {
+      video.currentTime = 0;
+      const playing = video.play();
+      if (playing && typeof playing.catch === "function") playing.catch(finish);
+    } catch (error) {
+      console.error("[STICKER VIDEO]", error);
+      finish();
+    }
+  });
+}
+
+function revealPurchasedSticker(capsule) {
+  stickerRevealQueue = stickerRevealQueue.catch(console.error).then(async () => {
+    await playStickerOpening();
+    dispenseReward(capsule);
+  });
+}
+
 function dispenseReward(capsule) {
   const reward = document.createElement("div");
   reward.textContent = capsule?.reward_name || "CAPSULE DISPENSED";
@@ -1124,7 +1195,7 @@ async function checkPayment() {
         });
         if (result.status === "paid" || result.status === "fulfilled") {
           clearPending(purchase.purchaseId);
-          dispenseReward(result.capsule);
+          revealPurchasedSticker(result.capsule);
           void refreshBuyLog();
         } else if (result.status === "expired" || result.status === "cancelled") {
           clearPending(purchase.purchaseId);
