@@ -1112,17 +1112,22 @@ function stopPolling() {
   }
 }
 
+function purchaseExpired(purchase) {
+  return !!purchase?.expiresAt && Date.now() >= Date.parse(purchase.expiresAt);
+}
+
 function startPolling() {
   stopPolling();
 
   paymentTimer = setInterval(() => {
-    if (
-      activePurchase &&
-      !purchaseOverlay.hidden &&
-      !paymentPanel.hidden
-    ) {
-      void checkPayment();
+    if (!activePurchase || purchaseOverlay.hidden || paymentPanel.hidden) return;
+    if (purchaseExpired(activePurchase) && !activePurchase.signature && !paymentSignature.value.trim()) {
+      stopPolling();
+      paymentWallet.hidden = true;
+      paymentStatus("Checkout expired. Select a capsule to start again.", true);
+      return;
     }
+    void checkPayment();
   }, PAYMENT_CHECK_MS);
 }
 
@@ -1152,8 +1157,12 @@ async function showPayment(purchase) {
   paymentBack.textContent = "BACK";
 
   paymentStatus("Open Phantom or send the exact SOL amount to the address above. For manual transfers, enter the transaction signature to verify.");
-
-  startPolling();
+  if (purchaseExpired(purchase) && !purchase.signature) {
+    paymentWallet.hidden = true;
+    paymentStatus("Checkout expired. Select a capsule to start again.", true);
+  } else {
+    startPolling();
+  }
 }
 
 /* VERIFY PAYMENT */
@@ -1218,6 +1227,14 @@ async function checkPayment() {
       paymentBack.textContent =
         "BACK TO CAPSULES";
 
+      return;
+    }
+
+    if (result.status === "expired") {
+      stopPolling();
+      paymentWallet.hidden = true;
+      clearPending();
+      paymentStatus("Checkout expired. Select a capsule to start again.", true);
       return;
     }
 
@@ -1365,8 +1382,9 @@ tierButtons.forEach(button => {
 /* WALLET */
 
 paymentWallet.addEventListener("click", async event => {
-  if (!activePurchase) {
+  if (!activePurchase || purchaseExpired(activePurchase)) {
     event.preventDefault();
+    paymentStatus("Checkout expired. Select a capsule to start again.", true);
     return;
   }
 
