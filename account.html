@@ -112,6 +112,31 @@ main {
   margin-top: 6px;
 }
 
+.account-activity {
+  margin-top: 18px;
+  padding: 10px 12px;
+  border: 1px solid rgba(189,58,255,.45);
+  border-radius: 10px;
+  background: rgba(9,5,26,.35);
+}
+.account-activity h3 {
+  margin: 0 0 7px;
+  font-size: 13px;
+  color: #64ffcb;
+}
+.account-activity-list {
+  max-height: 145px;
+  overflow: auto;
+  scrollbar-width: thin;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.account-activity-entry {
+  padding: 5px 0;
+  border-top: 1px solid rgba(166,84,230,.22);
+  white-space: nowrap;
+}
+
 .capsule-types {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -256,6 +281,8 @@ img.capsule-art {
   .avatar { width: 52px; height: 52px; flex: 0 0 52px; }
   .username { font-size: 17px; }
   .account-id { font-size: 10px; }
+  .account-activity { padding: 9px; }
+  .account-activity-list { font-size: 11px; }
   .collection { padding: 10px; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .sticker-item { padding: 9px; }
   .sticker-item strong { font-size: 12px; }
@@ -309,6 +336,11 @@ img.capsule-art {
       </div>
 
     </div>
+
+    <section class="account-activity" id="account-activity" aria-label="My activity" hidden>
+      <h3>MY ACTIVITY</h3>
+      <div class="account-activity-list" id="account-activity-list">Loading activity...</div>
+    </section>
 
     <p id="status" class="status"></p>
 
@@ -387,6 +419,25 @@ const signin = document.getElementById("signin");
 const signout = document.getElementById("signout");
 const collection = document.getElementById("collection");
 const collectionTotals = document.getElementById("collection-totals");
+const activityPanel = document.getElementById("account-activity");
+const activityList = document.getElementById("account-activity-list");
+
+function showAccountActivity(actions) {
+  activityList.replaceChildren();
+  if (!actions.length) {
+    activityList.textContent = "No activity yet.";
+    return;
+  }
+  const buyer = username.textContent || "User";
+  for (const action of actions) {
+    const entry = document.createElement("div");
+    entry.className = "account-activity-entry";
+    entry.textContent = buyer + " " + action.verb + " " + action.item +
+      (action.rarity ? " (" + action.rarity + ")" : "");
+    if (action.date) entry.title = new Date(action.date).toLocaleString();
+    activityList.append(entry);
+  }
+}
 const capsuleCountFields = {
   common: document.getElementById("opened-common"),
   rare: document.getElementById("opened-rare"),
@@ -479,6 +530,7 @@ async function loadCollection(user) {
   const loadVersion = ++collectionLoadVersion;
   activeCollectionUser = id;
   collectionMessage("Loading your stickers...");
+  activityList.textContent = "Loading activity...";
 
   try {
     const { data: session } = await client.auth.getSession();
@@ -504,11 +556,13 @@ async function loadCollection(user) {
     if (activeCollectionUser !== id || loadVersion !== collectionLoadVersion) return;
     setCapsuleBreakdown(purchases);
     if (!purchases.length) {
+      showAccountActivity([]);
       collectionMessage("No stickers collected yet.");
       return;
     }
 
     const cards = [];
+    const actions = [];
     const seenPurchaseIds = new Set();
     for (const purchase of purchases) {
       if (seenPurchaseIds.has(purchase.id)) continue;
@@ -527,6 +581,12 @@ async function loadCollection(user) {
           continue;
         }
         if (activeCollectionUser !== id || loadVersion !== collectionLoadVersion) return;
+        actions.push({
+          verb: "got",
+          item: data.capsule.reward_name || "Sticker",
+          rarity: purchase.tier,
+          date: purchase.paid_at
+        });
         if (data.capsule.reward_type === "sticker") {
           cards.push(makeStickerCard(purchase, data.capsule));
         }
@@ -536,6 +596,7 @@ async function loadCollection(user) {
     }
 
     if (activeCollectionUser !== id || loadVersion !== collectionLoadVersion) return;
+    showAccountActivity(actions);
     if (cards.length) {
       collection.replaceChildren(...cards);
     } else {
@@ -544,6 +605,7 @@ async function loadCollection(user) {
   } catch (error) {
     console.error("[COLLECTION]", error);
     if (activeCollectionUser === id && loadVersion === collectionLoadVersion) {
+      activityList.textContent = "Activity unavailable.";
       collectionMessage("Your collection could not be loaded. Please try again.");
     }
   }
@@ -584,6 +646,8 @@ function showAccount(user) {
   }
 
   resetCapsuleBreakdown();
+  activityPanel.hidden = false;
+  activityList.textContent = "Loading activity...";
   collectionMessage("Loading your stickers...");
 }
 
@@ -604,6 +668,8 @@ function showSignedOut() {
 
   activeCollectionUser = null;
   ++collectionLoadVersion;
+  activityPanel.hidden = true;
+  activityList.replaceChildren();
   resetCapsuleBreakdown();
   collectionMessage("Sign in to view your collection.");
 }
