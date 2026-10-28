@@ -99,6 +99,78 @@ main {
   margin-top: 6px;
 }
 
+.capsule-types {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0 28px;
+}
+.capsule-stat {
+  min-width: 0;
+  padding: 13px 8px;
+  border: 1px solid rgba(166,84,230,.6);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #25103d, #10091e);
+  text-align: center;
+}
+.capsule-stat.common { --tier-color: #30e8fb; }
+.capsule-stat.rare { --tier-color: #e946f6; }
+.capsule-stat.legendary { --tier-color: #ffc936; }
+.capsule-art {
+  width: min(100%, 116px);
+  aspect-ratio: 1;
+  margin: 0 auto 9px;
+  background-image: url("assets/zcety.png");
+  background-size: 300% auto;
+  background-repeat: no-repeat;
+  background-position-y: top;
+  border-radius: 50%;
+  filter: drop-shadow(0 0 11px var(--tier-color));
+}
+.capsule-stat.common .capsule-art { background-position-x: left; }
+.capsule-stat.rare .capsule-art { background-position-x: center; }
+.capsule-stat.legendary .capsule-art { background-position-x: right; }
+.capsule-tier {
+  color: var(--tier-color);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: .06em;
+}
+.capsule-quantity {
+  margin-top: 5px;
+  font-size: 17px;
+  color: #fff;
+  font-weight: bold;
+}
+.collection-heading {
+  margin: 20px 0 12px;
+  font-size: 19px;
+  color: #f2dcff;
+}
+.sticker-artwork {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  margin-bottom: 10px;
+  border-radius: 9px;
+  overflow: hidden;
+  border: 1px solid rgba(168,76,210,.45);
+  background: linear-gradient(145deg, #432266, #1b1038 60%, #073944);
+}
+.sticker-artwork img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.sticker-no-art {
+  padding: 10px;
+  color: #c9aed8;
+  font-size: 11px;
+  line-height: 1.5;
+  font-weight: bold;
+  text-align: center;
+}
 .collection {
   min-height: 180px;
   border: 2px dashed #683c87;
@@ -178,6 +250,13 @@ main {
   .collection { padding: 10px; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .sticker-item { padding: 9px; }
   .sticker-item strong { font-size: 12px; }
+  .capsule-types { gap: 6px; margin: 10px 0 20px; }
+  .capsule-stat { padding: 8px 4px; border-radius: 9px; }
+  .capsule-art { width: min(100%, 76px); margin-bottom: 5px; }
+  .capsule-tier { font-size: 10px; }
+  .capsule-quantity { font-size: 13px; }
+  .collection-heading { font-size: 16px; }
+  .sticker-no-art { font-size: 9px; }
   #collection-totals { font-size: 12px; line-height: 1.5; }
 }
 @media (max-width: 320px) {
@@ -237,8 +316,26 @@ main {
   <section class="account-panel">
 
     <h2>MY COLLECTION</h2>
-    <p id="collection-totals">CAPSULES OPENED: — | STICKERS OWNED: —</p>
+    <h3 class="collection-heading">CAPSULES OPENED <span id="collection-totals"></span></h3>
+    <div class="capsule-types" id="capsule-types" aria-label="Capsule types opened">
+      <div class="capsule-stat common">
+        <div class="capsule-art" role="img" aria-label="Common capsule"></div>
+        <div class="capsule-tier">COMMON</div>
+        <div class="capsule-quantity" id="opened-common">—</div>
+      </div>
+      <div class="capsule-stat rare">
+        <div class="capsule-art" role="img" aria-label="Rare capsule"></div>
+        <div class="capsule-tier">RARE</div>
+        <div class="capsule-quantity" id="opened-rare">—</div>
+      </div>
+      <div class="capsule-stat legendary">
+        <div class="capsule-art" role="img" aria-label="Legendary capsule"></div>
+        <div class="capsule-tier">LEGENDARY</div>
+        <div class="capsule-quantity" id="opened-legendary">—</div>
+      </div>
+    </div>
 
+    <h3 class="collection-heading">OWNED STICKERS</h3>
     <div class="collection" id="collection">
       Your collected items will appear here.
     </div>
@@ -278,6 +375,34 @@ const signin = document.getElementById("signin");
 const signout = document.getElementById("signout");
 const collection = document.getElementById("collection");
 const collectionTotals = document.getElementById("collection-totals");
+const capsuleCountFields = {
+  common: document.getElementById("opened-common"),
+  rare: document.getElementById("opened-rare"),
+  legendary: document.getElementById("opened-legendary")
+};
+
+function setCapsuleBreakdown(purchases) {
+  const counts = { common: 0, rare: 0, legendary: 0 };
+  const seen = new Set();
+  for (const purchase of purchases) {
+    if (seen.has(purchase.id)) continue;
+    seen.add(purchase.id);
+    if (Object.prototype.hasOwnProperty.call(counts, purchase.tier)) {
+      counts[purchase.tier] += 1;
+    }
+  }
+  for (const tier of Object.keys(counts)) {
+    capsuleCountFields[tier].textContent = counts[tier].toLocaleString() + " opened";
+  }
+  collectionTotals.textContent = "(" + seen.size + ")";
+}
+
+function resetCapsuleBreakdown() {
+  collectionTotals.textContent = "";
+  for (const field of Object.values(capsuleCountFields)) {
+    field.textContent = "—";
+  }
+}
 let activeCollectionUser = null;
 let collectionLoadVersion = 0;
 
@@ -293,14 +418,31 @@ function makeStickerCard(purchase, capsule) {
   const card = document.createElement("article");
   card.className = "sticker-item";
   const info = capsule?.reward_data || {};
-  const artwork = info.image_url || info.image || info.art_url;
-  if (typeof artwork === "string" && /^https:\/\//i.test(artwork)) {
+  const artwork = info.image_url || info.image || info.art_url ||
+    info.sticker_url || info.image_path || info.media?.url;
+  const artBox = document.createElement("div");
+  artBox.className = "sticker-artwork";
+  if (typeof artwork === "string" &&
+      (/^https:\/\//i.test(artwork) || /^assets\/[a-z0-9_./-]+$/i.test(artwork))) {
     const img = document.createElement("img");
     img.src = artwork;
     img.alt = capsule.reward_name || "Sticker";
     img.loading = "lazy";
-    card.append(img);
+    img.onerror = () => {
+      artBox.replaceChildren();
+      const note = document.createElement("span");
+      note.className = "sticker-no-art";
+      note.textContent = "STICKER ARTWORK UNAVAILABLE";
+      artBox.append(note);
+    };
+    artBox.append(img);
+  } else {
+    const note = document.createElement("span");
+    note.className = "sticker-no-art";
+    note.textContent = "STICKER ARTWORK NOT ADDED";
+    artBox.append(note);
   }
+  card.append(artBox);
 
   const label = document.createElement("div");
   label.className = "sticker-type";
@@ -348,6 +490,7 @@ async function loadCollection(user) {
     }
 
     if (activeCollectionUser !== id || loadVersion !== collectionLoadVersion) return;
+    setCapsuleBreakdown(purchases);
     if (!purchases.length) {
       collectionMessage("No stickers collected yet.");
       return;
@@ -372,7 +515,9 @@ async function loadCollection(user) {
           continue;
         }
         if (activeCollectionUser !== id || loadVersion !== collectionLoadVersion) return;
-        cards.push(makeStickerCard(purchase, data.capsule));
+        if (data.capsule.reward_type === "sticker") {
+          cards.push(makeStickerCard(purchase, data.capsule));
+        }
       } catch (error) {
         console.error("[COLLECTION] Sticker lookup failed", error);
       }
@@ -426,6 +571,7 @@ function showAccount(user) {
     avatar.classList.add("hidden");
   }
 
+  resetCapsuleBreakdown();
   collectionMessage("Loading your stickers...");
 }
 
@@ -446,7 +592,7 @@ function showSignedOut() {
 
   activeCollectionUser = null;
   ++collectionLoadVersion;
-  collectionTotals.textContent = "CAPSULES OPENED: — | STICKERS OWNED: —";
+  resetCapsuleBreakdown();
   collectionMessage("Sign in to view your collection.");
 }
 
@@ -485,8 +631,6 @@ async function loadAccount() {
   }
 
   if (account) {
-    collectionTotals.textContent = "CAPSULES OPENED: " + account.capsules_opened + " | STICKERS OWNED: " + account.stickers_owned;
-
     username.textContent =
       account.username || username.textContent;
 
