@@ -126,7 +126,7 @@ Deno.serve(async request => {
       Keypair.generate().publicKey.toBase58();
 
     const expiresAt = new Date(
-      Date.now() + 10 * 60 * 1000
+      Date.now() + 60 * 1000
     ).toISOString();
 
     // Store the pending purchase first.
