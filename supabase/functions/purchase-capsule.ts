@@ -55,7 +55,7 @@ async function authenticate(request: Request) {
 }
 
 function calculateAmount(priceUsd: string, solUsd: Decimal) {
-  const lamports = new Decimal(priceUsd).div(solUsd).mul(1_000_000_000).ceil();
+  const lamports = new Decimal(priceUsd).div(solUsd).mul(1_000_000_000).ceil().plus(890880);
   if (!lamports.isFinite() || lamports.lte(0)) throw new Error("Invalid SOL amount");
   return lamports.div(1_000_000_000).toFixed(9);
 }
