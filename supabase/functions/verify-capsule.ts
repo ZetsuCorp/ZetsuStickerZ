@@ -234,6 +234,15 @@ Deno.serve(async request => {
     const purchaseId =
       body?.purchaseId;
 
+    // Phantom returns the exact signed transaction ID after submission.
+    // Verify that transaction directly; reference lookup remains a fallback.
+    const submittedSignature = body?.signature;
+    if (submittedSignature != null &&
+        (typeof submittedSignature !== "string" ||
+         !/^[1-9A-HJ-NP-Za-km-z]{80,90}$/.test(submittedSignature))) {
+      return output({ error: "Invalid transaction signature" }, 400);
+    }
+
     if (
       typeof purchaseId !== "string" ||
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -283,26 +292,27 @@ Deno.serve(async request => {
       });
     }
 
-    /* FIND TRANSACTIONS BY REFERENCE */
+    /* DIRECT SIGNATURE OR REFERENCE LOOKUP */
 
-    const signatures = await rpc(
-      "getSignaturesForAddress",
-      [
-        purchase.payment_reference,
-        {
-          limit: 100,
-          commitment: "finalized"
-        }
-      ]
-    );
+    let signatures: Array<{ signature: string; err: unknown }> = [];
+    if (submittedSignature) {
+      signatures = [{ signature: submittedSignature, err: null }];
+    } else {
+      const found = await rpc(
+        "getSignaturesForAddress",
+        [
+          purchase.payment_reference,
+          {
+            limit: 100,
+            commitment: "finalized"
+          }
+        ]
+      );
+      signatures = Array.isArray(found) ? found : [];
+    }
 
-    for (const entry of signatures || []) {
-      if (
-        entry.err ||
-        typeof entry.signature !== "string"
-      ) {
-        continue;
-      }
+    for (const entry of signatures) {
+      if (entry.err || typeof entry.signature !== "string") continue;
 
       /*
         Retrieve raw transaction instructions.
