@@ -217,6 +217,7 @@ main {
   <section class="account-panel">
 
     <h2>MY COLLECTION</h2>
+    <p id="collection-totals">CAPSULES OPENED: — | STICKERS OWNED: —</p>
 
     <div class="collection" id="collection">
       Your collected items will appear here.
@@ -256,6 +257,7 @@ const status = document.getElementById("status");
 const signin = document.getElementById("signin");
 const signout = document.getElementById("signout");
 const collection = document.getElementById("collection");
+const collectionTotals = document.getElementById("collection-totals");
 let activeCollectionUser = null;
 
 function collectionMessage(message) {
@@ -414,6 +416,7 @@ function showSignedOut() {
     "Sign in with Discord to access your account.";
 
   activeCollectionUser = null;
+  collectionTotals.textContent = "CAPSULES OPENED: — | STICKERS OWNED: —";
   collectionMessage("Sign in to view your collection.");
 }
 
@@ -439,7 +442,7 @@ async function loadAccount() {
   const { data: account, error: accountError } =
     await client
       .from("sticker_accounts")
-      .select("id, discord_id, username")
+      .select("id, discord_id, username, capsules_opened, stickers_owned")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -452,6 +455,7 @@ async function loadAccount() {
   }
 
   if (account) {
+    collectionTotals.textContent = "CAPSULES OPENED: " + account.capsules_opened + " | STICKERS OWNED: " + account.stickers_owned;
 
     username.textContent =
       account.username || username.textContent;
