@@ -143,7 +143,7 @@ function verifyTransfer(transaction: any, purchase: any): boolean {
 
   const createdAt = Date.parse(purchase.created_at);
   const expiresAt = Date.parse(purchase.expires_at);
-  if (Number.isFinite(expiresAt) && transaction.blockTime * 1000 > expiresAt) return false;
+  if (Number.isFinite(expiresAt) && transaction.blockTime * 1000 > expiresAt + 120000) return false;
   if (!Number.isFinite(createdAt) ||
       transaction.blockTime < Math.floor(createdAt / 1000) - 120) return false;
 
@@ -306,7 +306,7 @@ Deno.serve(async request => {
           purchase.payment_reference,
           {
             limit: 100,
-            commitment: "finalized"
+            commitment: "confirmed"
           }
         ]
       );
@@ -332,7 +332,7 @@ Deno.serve(async request => {
           entry.signature,
           {
             encoding: "json",
-            commitment: "finalized",
+            commitment: "confirmed",
             maxSupportedTransactionVersion: 0
           }
         ]
@@ -384,7 +384,7 @@ Deno.serve(async request => {
 
     /* EXPIRE UNPAID CHECKOUTS; NEVER ACCEPT PAYMENTS AFTER EXPIRATION */
 
-    if (purchase.expires_at && Date.now() >= Date.parse(purchase.expires_at)) {
+    if (!submittedSignature && purchase.expires_at && Date.now() >= Date.parse(purchase.expires_at)) {
       const { error: expireError } = await admin
         .from("capsule_purchases")
         .update({ status: "expired" })
