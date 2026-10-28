@@ -15,7 +15,9 @@
 
 body {
   margin: 0;
-  min-height: 100vh;
+  min-width: 0;
+  min-height: 100svh;
+  overflow-x: hidden;
   background: #090515;
   color: white;
   font-family: Arial, sans-serif;
@@ -26,14 +28,14 @@ header {
   align-items: center;
   justify-content: space-between;
   gap: 15px;
-  padding: 20px;
+  padding: 16px clamp(12px, 3vw, 20px);
   background: #180c2b;
   border-bottom: 2px solid #a635f2;
 }
 
 header h1 {
   margin: 0;
-  font-size: 22px;
+  font-size: clamp(16px, 3vw, 22px);
 }
 
 button, .button {
@@ -52,16 +54,16 @@ button:hover, .button:hover {
 }
 
 main {
-  width: min(900px, 94%);
-  margin: 40px auto;
+  width: min(900px, calc(100% - 24px));
+  margin: clamp(12px, 4vw, 40px) auto;
 }
 
 .account-panel {
   background: #211035;
   border: 2px solid #bd3aff;
   border-radius: 18px;
-  padding: 25px;
-  margin-bottom: 25px;
+  padding: clamp(12px, 3vw, 25px);
+  margin-bottom: clamp(12px, 3vw, 25px);
 }
 
 .account-panel h2 {
@@ -71,8 +73,10 @@ main {
 .profile {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 15px;
+  min-width: 0;
 }
+.profile > div { min-width: 0; }
 
 .avatar {
   width: 70px;
@@ -100,7 +104,7 @@ main {
   border: 2px dashed #683c87;
   border-radius: 12px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr));
   align-content: start;
   gap: 12px;
   color: #bba9ce;
@@ -162,6 +166,22 @@ main {
 
 .hidden {
   display: none;
+}
+
+@media (max-width: 600px) {
+  header { gap: 10px; padding: 12px; }
+  header .button { padding: 9px 11px; font-size: 11px; text-align: center; }
+  .account-panel { border-radius: 12px; }
+  .avatar { width: 52px; height: 52px; flex: 0 0 52px; }
+  .username { font-size: 17px; }
+  .account-id { font-size: 10px; }
+  .collection { padding: 10px; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sticker-item { padding: 9px; }
+  .sticker-item strong { font-size: 12px; }
+  #collection-totals { font-size: 12px; line-height: 1.5; }
+}
+@media (max-width: 320px) {
+  .collection { grid-template-columns: minmax(0, 1fr); }
 }
 </style>
 </head>
