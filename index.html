@@ -1078,21 +1078,25 @@ async function checkPayment() {
   checkingPayment = true;
   try {
     for (const purchase of readPending()) {
-      const result = await invoke("verify-capsule", {
-        purchaseId: purchase.purchaseId,
-        ...(purchase.signature ? { signature: purchase.signature } : {})
-      });
-      if (result.status === "paid" || result.status === "fulfilled") {
-        clearPending(purchase.purchaseId);
-        dispenseReward(result.capsule);
-      } else if (result.status === "expired" || result.status === "cancelled") {
-        clearPending(purchase.purchaseId);
+      try {
+        const result = await invoke("verify-capsule", {
+          purchaseId: purchase.purchaseId,
+          ...(purchase.signature ? { signature: purchase.signature } : {})
+        });
+        if (result.status === "paid" || result.status === "fulfilled") {
+          clearPending(purchase.purchaseId);
+          dispenseReward(result.capsule);
+        } else if (result.status === "expired" || result.status === "cancelled") {
+          clearPending(purchase.purchaseId);
+        }
+      } catch (error) {
+        console.error("[CAPSULE VERIFICATION]", error);
+        // A deleted or inaccessible purchase is not a customer-facing error.
+        // Discard only that stale record so other payments can still resolve.
+        if (/HTTP 404: Purchase not found/i.test(String(error?.message || error))) {
+          clearPending(purchase.purchaseId);
+        }
       }
-    }
-  } catch (error) {
-    console.error("[CAPSULE VERIFICATION]", error);
-    if (!purchaseOverlay.hidden && !purchasing) {
-      purchaseStatus.textContent = "Payment check error: " + (error?.message || error);
     }
   } finally {
     checkingPayment = false;
@@ -1209,7 +1213,7 @@ async function buyCapsule(tier) {
     startPolling();
   } catch (error) {
     console.error("[CAPSULE PAYMENT]", error);
-    purchaseStatus.textContent = error?.message || "Wallet payment failed";
+    purchaseStatus.textContent = "Payment could not start. Try again.";
     // If submission was interrupted, still check the reference for a late transfer.
     if (purchase && !purchase.signature) startPolling();
   } finally {
