@@ -37,6 +37,19 @@ header h1 {
   margin: 0;
   font-size: clamp(16px, 3vw, 22px);
 }
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.zetsu-symbol {
+  display: block;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  flex: 0 0 42px;
+}
 
 button, .button {
   background: #d837f2;
@@ -116,20 +129,14 @@ main {
 .capsule-stat.common { --tier-color: #30e8fb; }
 .capsule-stat.rare { --tier-color: #e946f6; }
 .capsule-stat.legendary { --tier-color: #ffc936; }
-.capsule-art {
+img.capsule-art {
+  display: block;
   width: min(100%, 116px);
   aspect-ratio: 1;
+  height: auto;
+  object-fit: contain;
   margin: 0 auto 9px;
-  background-image: url("assets/zcety.png");
-  background-size: 300% auto;
-  background-repeat: no-repeat;
-  background-position-y: top;
-  border-radius: 50%;
-  filter: drop-shadow(0 0 11px var(--tier-color));
 }
-.capsule-stat.common .capsule-art { background-position-x: left; }
-.capsule-stat.rare .capsule-art { background-position-x: center; }
-.capsule-stat.legendary .capsule-art { background-position-x: right; }
 .capsule-tier {
   color: var(--tier-color);
   font-weight: 800;
@@ -242,6 +249,8 @@ main {
 
 @media (max-width: 600px) {
   header { gap: 10px; padding: 12px; }
+  .brand-lockup { gap: 6px; }
+  .zetsu-symbol { width: 30px; height: 30px; flex-basis: 30px; }
   header .button { padding: 9px 11px; font-size: 11px; text-align: center; }
   .account-panel { border-radius: 12px; }
   .avatar { width: 52px; height: 52px; flex: 0 0 52px; }
@@ -268,7 +277,10 @@ main {
 <body>
 
 <header>
-  <h1>STICKER MANIA</h1>
+  <div class="brand-lockup">
+    <img class="zetsu-symbol" src="assets/image%20%2835%29.png" alt="Zetsu symbol">
+    <h1>STICKER MANIA</h1>
+  </div>
   <a class="button" href="index.html">BACK TO MACHINE</a>
 </header>
 
@@ -319,17 +331,17 @@ main {
     <h3 class="collection-heading">CAPSULES OPENED <span id="collection-totals"></span></h3>
     <div class="capsule-types" id="capsule-types" aria-label="Capsule types opened">
       <div class="capsule-stat common">
-        <div class="capsule-art" role="img" aria-label="Common capsule"></div>
+        <img class="capsule-art" src="assets/sticker_capsule_common.png" alt="Common capsule">
         <div class="capsule-tier">COMMON</div>
         <div class="capsule-quantity" id="opened-common">—</div>
       </div>
       <div class="capsule-stat rare">
-        <div class="capsule-art" role="img" aria-label="Rare capsule"></div>
+        <img class="capsule-art" src="assets/sticker_capsule_rare.png" alt="Rare capsule">
         <div class="capsule-tier">RARE</div>
         <div class="capsule-quantity" id="opened-rare">—</div>
       </div>
       <div class="capsule-stat legendary">
-        <div class="capsule-art" role="img" aria-label="Legendary capsule"></div>
+        <img class="capsule-art" src="assets/sticker_capsule_legendary.png" alt="Legendary capsule">
         <div class="capsule-tier">LEGENDARY</div>
         <div class="capsule-quantity" id="opened-legendary">—</div>
       </div>
