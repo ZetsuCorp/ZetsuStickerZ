@@ -54,25 +54,8 @@ body {
   background:
     linear-gradient(#080412, #080412) padding-box,
     linear-gradient(110deg, #28efff, #9f5fff, #ff71da, #fff3a1, #5fffe2, #7989ff, #28efff) border-box;
-  background-size: 100% 100%, 280% 280%;
-  background-position: center, 0% 50%;
+  background-size: 100% 100%, 100% 100%;
   box-shadow: 0 0 13px rgba(38, 235, 255, .65), 0 0 32px rgba(186, 77, 255, .4);
-  animation: arcade-iridescence 5s ease-in-out infinite;
-}
-
-@keyframes arcade-iridescence {
-  0%, 100% {
-    background-position: center, 0% 50%;
-    box-shadow: 0 0 13px rgba(38, 235, 255, .65), 0 0 32px rgba(186, 77, 255, .4);
-  }
-  50% {
-    background-position: center, 100% 50%;
-    box-shadow: 0 0 18px rgba(255, 113, 218, .75), 0 0 39px rgba(55, 217, 255, .55);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .arcade-container { animation: none; }
 }
 
 .game-container {
@@ -879,6 +862,7 @@ async function functionError(error) {
 /* LIVE SOL/USD PRICE: PUBLIC MARKET DATA, NO SUPABASE FUNCTION */
 
 let lastSOLPrice = null;
+let solPriceUpdating = false;
 
 function formatPrice(price) {
   return "$" + Number(price).toFixed(2);
@@ -932,7 +916,9 @@ async function refreshSOLPrice() {
 }
 
 function updateSOLPrice() {
-  void refreshSOLPrice();
+  if (document.hidden || solPriceUpdating) return;
+  solPriceUpdating = true;
+  void refreshSOLPrice().finally(() => { solPriceUpdating = false; });
 }
 
 /* DISCORD USER INFORMATION */
@@ -1228,7 +1214,10 @@ function validatePurchase(data, tier) {
 }
 
 /* VERIFIED PUBLIC BUY LOG */
+let buyLogUpdating = false;
 async function refreshBuyLog() {
+  if (document.hidden || buyLogUpdating) return;
+  buyLogUpdating = true;
   try {
     const { data, error } = await client.rpc("recent_sticker_buys", { max_rows: 15 });
     if (error) throw error;
@@ -1242,7 +1231,11 @@ async function refreshBuyLog() {
         (buy.sticker || "Sticker") + " (" + (buy.tier || "common") + ")";
       list.append(item);
     }
-  } catch (error) { console.error("[BUY LOG]", error); }
+  } catch (error) {
+    console.error("[BUY LOG]", error);
+  } finally {
+    buyLogUpdating = false;
+  }
 }
 void refreshBuyLog();
 setInterval(refreshBuyLog, 15000);
@@ -1510,6 +1503,7 @@ document.addEventListener(
   () => {
     if (!document.hidden) {
       updateSOLPrice();
+      void refreshBuyLog();
     }
   }
 );
