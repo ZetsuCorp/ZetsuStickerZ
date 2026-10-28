@@ -48,10 +48,31 @@ body {
   width: min(100%, 900px, calc(100svh - 24px));
   aspect-ratio: 1 / 1;
   flex: 0 0 auto;
-  border: 2px solid #543184;
+  border: 6px solid transparent;
   border-radius: 18px;
   overflow: hidden;
-  background: #080412;
+  background:
+    linear-gradient(#080412, #080412) padding-box,
+    linear-gradient(110deg, #28efff, #9f5fff, #ff71da, #fff3a1, #5fffe2, #7989ff, #28efff) border-box;
+  background-size: 100% 100%, 280% 280%;
+  background-position: center, 0% 50%;
+  box-shadow: 0 0 13px rgba(38, 235, 255, .65), 0 0 32px rgba(186, 77, 255, .4);
+  animation: arcade-iridescence 5s ease-in-out infinite;
+}
+
+@keyframes arcade-iridescence {
+  0%, 100% {
+    background-position: center, 0% 50%;
+    box-shadow: 0 0 13px rgba(38, 235, 255, .65), 0 0 32px rgba(186, 77, 255, .4);
+  }
+  50% {
+    background-position: center, 100% 50%;
+    box-shadow: 0 0 18px rgba(255, 113, 218, .75), 0 0 39px rgba(55, 217, 255, .55);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arcade-container { animation: none; }
 }
 
 .game-container {
@@ -471,7 +492,7 @@ body {
 
   .arcade-container {
     width: min(100%, calc(100svh - 8px));
-    border-width: 1px;
+    border-width: 4px;
     border-radius: 8px;
   }
 
