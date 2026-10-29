@@ -2,6 +2,29 @@
 (() => {
   const isDiscordActivity = location.hostname.endsWith(".discordsays.com");
   const base = new URL(".", document.currentScript.src);
+  // Discord proxies Activities under <application-id>.discordsays.com.
+  // Confirm that Discord's SDK is connected before opening an outside link.
+  const activity = {
+    isActivity: isDiscordActivity,
+    ready: Promise.resolve(null),
+    async openExternalLink(url) {
+      if (!this.isActivity) throw new Error("Not running in Discord");
+      const sdk = await this.ready;
+      const result = await sdk.commands.openExternalLink({ url });
+      if (result.opened === false) throw new Error("Checkout link was not opened");
+      return result;
+    }
+  };
+  window.StickerDiscord = activity;
+  if (isDiscordActivity) {
+    activity.ready = import("/discord-jsdelivr/npm/@discord/embedded-app-sdk@2.5.0/+esm")
+      .then(({ DiscordSDK }) => {
+        const sdk = new DiscordSDK("1558904698025676851");
+        return sdk.ready().then(() => sdk);
+      });
+    // The checkout click awaits this; startup can continue without a wallet.
+    activity.ready.catch(error => console.error("[DISCORD SDK]", error));
+  }
 
   function load(src) {
     return new Promise((resolve, reject) => {
@@ -22,8 +45,8 @@
 
   Promise.all([
     load(supabaseScript),
-    load(solanaScript).catch(error => {
-      // A missing wallet library must not disable the vending-machine buttons.
+    isDiscordActivity ? Promise.resolve() : load(solanaScript).catch(error => {
+      // The machine still needs to load if a wallet library is unavailable.
       console.error("[SOLANA LIBRARY]", error);
     })
   ])
