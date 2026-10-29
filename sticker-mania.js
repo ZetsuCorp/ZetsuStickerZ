@@ -155,32 +155,6 @@ function formatPrice(price) {
 }
 
 async function refreshSOLPrice() {
-  // Discord Activities cannot reach unmapped third-party market APIs directly.
-  // Use the existing Discord-to-Supabase mapping for the display-only quote.
-  if (window.StickerDiscord?.isActivity) {
-    try {
-      // Use the same Supabase client that loads RECENT BUYS successfully.
-      const { data: quote, error } = await client.functions.invoke("sol-price", {
-        method: "GET"
-      });
-      if (error) throw error;
-      const price = Number(quote?.usd);
-      if (!Number.isFinite(price) || price <= 0) throw new Error("Invalid SOL/USD quote");
-      lastSOLPrice = price;
-      const label = "SOL " + formatPrice(price);
-      priceMain.textContent = label;
-      pricePurchase.textContent = label;
-    } catch (error) {
-      console.warn("[DISCORD SOL PRICE]", error);
-      const label = lastSOLPrice === null
-        ? "SOL PRICE UNAVAILABLE"
-        : "SOL " + formatPrice(lastSOLPrice) + " (LAST)";
-      priceMain.textContent = label;
-      pricePurchase.textContent = label;
-    }
-    return;
-  }
-
   const feeds = [
     {
       url: "https://api.coinbase.com/v2/prices/SOL-USD/spot",
