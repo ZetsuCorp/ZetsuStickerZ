@@ -665,6 +665,29 @@ function openPurchase() {
 async function buyCapsule(tier) {
   if (purchasing) return;
   if (!Object.prototype.hasOwnProperty.call(CAPSULE_PRICES, tier)) return;
+
+  // Discord's embedded frame cannot access Phantom directly.
+  // Open the SAME existing website checkout outside Discord, without
+  // creating a payment in the Activity or bypassing wallet verification.
+  if (window.StickerDiscord?.isActivity) {
+    purchasing = true;
+    tierButtons.forEach(button => { button.disabled = true; });
+    purchaseStatus.textContent = "OPENING CHECKOUT...";
+    try {
+      const url = new URL("https://zetsucorp.github.io/ZetsuStickerZ/");
+      url.searchParams.set("checkout", tier);
+      await window.StickerDiscord.openExternalLink(url.href);
+      purchaseStatus.textContent = "COMPLETE THE PURCHASE IN YOUR BROWSER.";
+    } catch (error) {
+      console.error("[DISCORD CHECKOUT]", error);
+      purchaseStatus.textContent = "COULD NOT OPEN CHECKOUT. TRY AGAIN.";
+    } finally {
+      purchasing = false;
+      tierButtons.forEach(button => { button.disabled = false; });
+    }
+    return;
+  }
+
   if (!currentUser) { closePurchase(); openAuth(); return; }
 
   purchasing = true;
@@ -760,6 +783,16 @@ purchaseOverlay.onclick = event => {
 tierButtons.forEach(button => {
   button.onclick = () => { void buyCapsule(button.dataset.tier); };
 });
+
+// A checkout opened from Discord selects the tier on the normal website.
+// The user must tap the tier again: wallet approval must be a real user action.
+if (!window.StickerDiscord?.isActivity) {
+  const tier = new URLSearchParams(window.location.search).get("checkout");
+  if (Object.prototype.hasOwnProperty.call(CAPSULE_PRICES, tier)) {
+    openPurchase();
+    purchaseStatus.textContent = "SELECT " + tier.toUpperCase() + " TO PAY.";
+  }
+}
 
 /* ESCAPE KEY */
 
