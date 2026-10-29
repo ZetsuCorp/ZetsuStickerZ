@@ -32,7 +32,7 @@
       });
       if (!auth?.user?.id) throw new Error("Discord did not confirm the current player");
       this.player = auth.user;
-      return auth.user;
+      return { player: auth.user, linked: result.linked === true, loginProof: result.login_proof || null };
     },
     async openExternalLink(url) {
       if (!this.isActivity) throw new Error("Not running in Discord");
