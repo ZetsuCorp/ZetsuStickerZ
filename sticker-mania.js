@@ -544,6 +544,7 @@ function validatePurchase(data, tier) {
 
 /* VERIFIED PUBLIC BUY LOG */
 let buyLogUpdating = false;
+let previousBuyLog = null;
 async function refreshBuyLog() {
   if (document.hidden || buyLogUpdating) return;
   buyLogUpdating = true;
@@ -551,14 +552,29 @@ async function refreshBuyLog() {
     const { data, error } = await client.rpc("recent_sticker_buys", { max_rows: 15 });
     if (error) throw error;
     const list = $("buy-log-items");
+    const entries = (data || []).map(buy =>
+      (buy.buyer || "User") + " got " +
+      (buy.sticker || "Sticker") + " (" + (buy.tier || "common") + ")"
+    );
+    const snapshot = JSON.stringify(entries);
+    if (snapshot === previousBuyLog) return;
+    const isNewActivity = previousBuyLog !== null &&
+      entries.length > 0 && (!JSON.parse(previousBuyLog).includes(entries[0]));
+    previousBuyLog = snapshot;
     list.replaceChildren();
-    if (!data?.length) { list.textContent = "No purchases yet"; return; }
-    for (const buy of data) {
+    if (!entries.length) { list.textContent = "No purchases yet"; return; }
+    for (const [index, message] of entries.entries()) {
       const item = document.createElement("div");
       item.className = "buy-log-entry";
-      item.textContent = (buy.buyer || "User") + " got " +
-        (buy.sticker || "Sticker") + " (" + (buy.tier || "common") + ")";
+      item.textContent = message;
+      if (isNewActivity && index === 0) item.classList.add("new");
       list.append(item);
+    }
+    if (isNewActivity) {
+      const panel = list.closest(".buy-log");
+      panel.classList.remove("flash");
+      void panel.offsetWidth;
+      panel.classList.add("flash");
     }
   } catch (error) {
     console.error("[BUY LOG]", error);
