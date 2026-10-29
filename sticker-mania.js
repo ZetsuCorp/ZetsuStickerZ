@@ -13,9 +13,9 @@ const RECEIVER =
   "CT1fjjJMaNb2jgwH7rnuyiLcASmtmdRzSw7tQv8VXaRK";
 
 const CAPSULE_PRICES = {
-  common: 0.05,
-  rare: 1.00,
-  legendary: 3.00
+  common: 1.00,
+  rare: 3.00,
+  legendary: 5.00
 };
 
 const ACCOUNT_URL =
