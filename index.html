@@ -61,6 +61,7 @@ body {
   position: relative;
   width: 100%;
   height: 100%;
+  container-type: inline-size;
 }
 
 .machine {
@@ -240,7 +241,7 @@ body {
 .collection-label {
   color: white;
   font-weight: bold;
-  font-size: clamp(5px, 1vw, 8px);
+  font-size: clamp(3px, 1cqw, 8px);
   text-shadow: 0 0 5px #527cff;
 }
 
@@ -515,10 +516,6 @@ body {
     gap: 2px;
     padding: 2px;
     border-radius: 5px;
-  }
-
-  .collection-label {
-    font-size: 6px;
   }
 
   .purchase-overlay {
