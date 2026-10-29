@@ -113,8 +113,40 @@ const authStatus = $("auth-status");
 const tierButtons = [
   ...document.querySelectorAll("[data-tier]")
 ];
-tierButtons.forEach(button => {
-  button.title = { common: "$0.99", rare: "$2.99", legendary: "$4.99" }[button.dataset.tier];
+
+// Show a visible price over the capsule card, not a browser-native tooltip.
+const capsulePriceLabels = { common: "$0.99", rare: "$2.99", legendary: "$4.99" };
+const capsuleModal = document.querySelector(".purchase-modal");
+const capsulePricePopup = document.createElement("div");
+capsulePricePopup.setAttribute("aria-hidden", "true");
+capsulePricePopup.style.cssText =
+  "position:absolute;top:55%;z-index:4;transform:translate(-50%,-50%);" +
+  "padding:7px 15px;border:2px solid white;border-radius:8px;" +
+  "background:#10071f;color:white;font:bold clamp(13px,2.3vw,21px) Arial;" +
+  "box-shadow:0 0 15px #fff8;text-shadow:0 0 7px #fff;" +
+  "white-space:nowrap;pointer-events:none;display:none";
+capsuleModal.appendChild(capsulePricePopup);
+capsuleModal.addEventListener("pointermove", event => {
+  if (event.pointerType === "touch") return;
+  const box = capsuleModal.getBoundingClientRect();
+  const x = 100 * (event.clientX - box.left) / box.width;
+  const y = 100 * (event.clientY - box.top) / box.height;
+  const tier = y >= 20 && y <= 83
+    ? (x >= 13 && x <= 34 ? "common" :
+       x >= 40 && x <= 60 ? "rare" :
+       x >= 67 && x <= 87 ? "legendary" : null)
+    : null;
+  if (!tier) { capsulePricePopup.style.display = "none"; return; }
+  const price = capsulePriceLabels[tier];
+  if (capsulePricePopup.textContent !== price) {
+    capsulePricePopup.textContent = price;
+    capsulePricePopup.style.left =
+      { common: "23.5%", rare: "50%", legendary: "77%" }[tier];
+  }
+  capsulePricePopup.style.display = "block";
+});
+capsuleModal.addEventListener("pointerleave", () => {
+  capsulePricePopup.style.display = "none";
 });
 
 /* FUNCTION ERROR DETAILS */
