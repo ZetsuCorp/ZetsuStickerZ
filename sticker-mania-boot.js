@@ -81,7 +81,7 @@
       if (!window.supabase?.createClient) {
         throw new Error("Supabase library was not initialized");
       }
-      return load(new URL("sticker-mania.js?v=discord-checkout-1", base).href);
+      return load(new URL("sticker-mania.js?v=buy-log-flash-1", base).href);
     })
     .catch(error => {
       console.error("[STICKER MANIA STARTUP]", error);
