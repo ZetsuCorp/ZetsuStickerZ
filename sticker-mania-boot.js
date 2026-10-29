@@ -7,6 +7,33 @@
   const activity = {
     isActivity: isDiscordActivity,
     ready: Promise.resolve(null),
+    async authorizePlayer() {
+      if (!this.isActivity) throw new Error("Discord Activity required");
+      const sdk = await this.ready;
+      const { code } = await sdk.commands.authorize({
+        client_id: "1558904698025676851",
+        response_type: "code",
+        state: "",
+        prompt: "none",
+        scope: ["identify", "applications.commands"]
+      });
+      if (!code) throw new Error("Discord authorization was not granted");
+      const response = await fetch("/discord-supabase/functions/v1/discord-activity-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.access_token) {
+        throw new Error(result.error || "Discord login verification failed");
+      }
+      const auth = await sdk.commands.authenticate({
+        access_token: result.access_token
+      });
+      if (!auth?.user?.id) throw new Error("Discord did not confirm the current player");
+      this.player = auth.user;
+      return auth.user;
+    },
     async openExternalLink(url) {
       if (!this.isActivity) throw new Error("Not running in Discord");
       const sdk = await this.ready;
