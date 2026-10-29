@@ -747,10 +747,20 @@ async function buyCapsule(tier) {
       if (matches.length !== 1) {
         throw new Error("Expected one published Discord consumable SKU for " + tier);
       }
+      if (!currentUser) throw new Error("Link your Discord Sticker Mania account before buying");
       const result = await sdk.commands.startPurchase({ sku_id: matches[0].id });
-      purchaseStatus.textContent = Array.isArray(result) && result.length
-        ? "DISCORD PURCHASE COMPLETE. STICKER DELIVERY NOT YET CONNECTED."
-        : "DISCORD CHECKOUT CLOSED.";
+      if (!Array.isArray(result) || !result.length) {
+        purchaseStatus.textContent = "DISCORD CHECKOUT CLOSED.";
+      } else {
+        purchaseStatus.textContent = "VERIFYING DISCORD PURCHASE...";
+        const delivery = await invoke("discord-capsule", { tier, skuId: matches[0].id });
+        if (delivery.status !== "paid" && delivery.status !== "fulfilled") {
+          throw new Error(delivery.error || "Discord purchase pending");
+        }
+        purchaseStatus.textContent = "STICKER DISPENSED!";
+        revealPurchasedSticker(delivery.capsule);
+        void refreshBuyLog();
+      }
     } catch (error) {
       console.error("[DISCORD CHECKOUT]", error);
       purchaseStatus.textContent = "DISCORD CHECKOUT: " + (error?.message || "UNAVAILABLE");
