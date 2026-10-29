@@ -131,6 +131,12 @@ indexPriceStyle.textContent = `
     left: 50%;
     top: 80%;
     transform: translate(-50%, -50%);
+    display: grid;
+    place-items: center;
+    width: clamp(44px, 8cqw, 66px);
+    height: clamp(44px, 8cqw, 66px);
+    border-radius: 50%;
+    background: #10071f;
     color: white;
     font: 900 clamp(10px, 2cqw, 17px) Arial, sans-serif;
     text-shadow: 0 1px 3px #000, 0 0 8px #fff;
