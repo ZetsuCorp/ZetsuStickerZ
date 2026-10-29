@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://zetsucorp.github.io/ZetsuStickerZ/sitemap.xml
