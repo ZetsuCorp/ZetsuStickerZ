@@ -38,7 +38,7 @@ jobs:
       - name: Refresh Discord SKU script cache
         run: |
           sudo sed -i 's/sticker-mania-boot.js?v=casino-glow-2/sticker-mania-boot.js?v=discord-sku-ids-aa35a35/' ./_site/index.html
-          sudo sed -i 's/sticker-mania.js?v=casino-glow-2/sticker-mania.js?v=circle-prices-51f20ad/' ./_site/sticker-mania-boot.js
+          sudo sed -i 's/sticker-mania.js?v=casino-glow-2/sticker-mania.js?v=opaque-price-168cc4f/' ./_site/sticker-mania-boot.js
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
 
