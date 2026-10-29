@@ -709,21 +709,31 @@ async function buyCapsule(tier) {
   if (purchasing) return;
   if (!Object.prototype.hasOwnProperty.call(CAPSULE_PRICES, tier)) return;
 
-  // Discord's embedded frame cannot access Phantom directly.
-  // Open the SAME existing website checkout outside Discord, without
-  // creating a payment in the Activity or bypassing wallet verification.
+  // Discord Activity only: launch Discord's native SKU checkout.
+  // Fulfillment is intentionally separate; a client checkout result is not
+  // sufficient proof to release a sticker.
   if (window.StickerDiscord?.isActivity) {
     purchasing = true;
     tierButtons.forEach(button => { button.disabled = true; });
-    purchaseStatus.textContent = "OPENING CHECKOUT...";
+    purchaseStatus.textContent = "OPENING DISCORD CHECKOUT...";
     try {
-      const url = new URL("https://zetsucorp.github.io/ZetsuStickerZ/");
-      url.searchParams.set("checkout", tier);
-      await window.StickerDiscord.openExternalLink(url.href);
-      purchaseStatus.textContent = "COMPLETE THE PURCHASE IN YOUR BROWSER.";
+      const sdk = await window.StickerDiscord.ready;
+      const { skus } = await sdk.commands.getSkus();
+      const matches = (skus || []).filter(sku => {
+        const name = String(sku.name || "").trim().toLowerCase();
+        return Number(sku.type) === 3 &&
+          (name.includes("(" + tier + ")") || name.endsWith(" " + tier));
+      });
+      if (matches.length !== 1) {
+        throw new Error("Expected one published Discord consumable SKU for " + tier);
+      }
+      const result = await sdk.commands.startPurchase({ sku_id: matches[0].id });
+      purchaseStatus.textContent = Array.isArray(result) && result.length
+        ? "DISCORD PURCHASE COMPLETE. STICKER DELIVERY NOT YET CONNECTED."
+        : "DISCORD CHECKOUT CLOSED.";
     } catch (error) {
       console.error("[DISCORD CHECKOUT]", error);
-      purchaseStatus.textContent = "COULD NOT OPEN CHECKOUT. TRY AGAIN.";
+      purchaseStatus.textContent = "DISCORD CHECKOUT: " + (error?.message || "UNAVAILABLE");
     } finally {
       purchasing = false;
       tierButtons.forEach(button => { button.disabled = false; });
