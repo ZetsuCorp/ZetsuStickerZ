@@ -120,25 +120,20 @@ const indexPriceStyle = document.createElement("style");
 indexPriceStyle.textContent = `
   .index-price-hover {
     position: absolute;
-    top: 28%;
-    height: 36%;
-    width: 23%;
+    top: 55%;
+    height: 25%;
+    width: 21%;
     z-index: 2;
   }
   .index-price-hover::after {
     content: attr(data-price);
     position: absolute;
     left: 50%;
-    top: 62%;
+    top: 80%;
     transform: translate(-50%, -50%);
-    padding: 5px 9px;
-    border: 2px solid white;
-    border-radius: 7px;
-    background: rgba(10, 5, 25, .95);
     color: white;
-    font: bold clamp(11px, 2.5cqw, 20px) Arial, sans-serif;
-    text-shadow: 0 0 8px white;
-    box-shadow: 0 0 12px rgba(255,255,255,.75);
+    font: 900 clamp(10px, 2cqw, 17px) Arial, sans-serif;
+    text-shadow: 0 1px 3px #000, 0 0 8px #fff;
     white-space: nowrap;
     opacity: 0;
     pointer-events: none;
@@ -147,9 +142,9 @@ indexPriceStyle.textContent = `
 `;
 document.head.appendChild(indexPriceStyle);
 [
-  { price: "$0.99", left: "2%" },
-  { price: "$2.99", left: "27%" },
-  { price: "$4.99", left: "52%" }
+  { price: "$0.99", left: "12%" },
+  { price: "$2.99", left: "33%" },
+  { price: "$4.99", left: "54%" }
 ].forEach(item => {
   const zone = document.createElement("div");
   zone.className = "index-price-hover";
