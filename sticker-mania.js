@@ -155,6 +155,9 @@ function formatPrice(price) {
 }
 
 async function refreshSOLPrice() {
+  // Discord-only diagnosis: show the first failed source in the existing price label.
+  const diagnosingDiscord = !!window.StickerDiscord?.isActivity;
+  let firstFailure = "";
   const feeds = [
     {
       url: window.StickerDiscord?.isActivity
@@ -180,10 +183,16 @@ async function refreshSOLPrice() {
         credentials: "omit",
         signal: AbortSignal.timeout(6000)
       });
-      if (!response.ok) continue;
+      if (!response.ok) {
+        if (diagnosingDiscord && !firstFailure) firstFailure = "HTTP " + response.status;
+        continue;
+      }
 
       const price = Number(feed.get(await response.json()));
-      if (!Number.isFinite(price) || price <= 0) continue;
+      if (!Number.isFinite(price) || price <= 0) {
+        if (diagnosingDiscord && !firstFailure) firstFailure = "DATA";
+        continue;
+      }
 
       lastSOLPrice = price;
       const label = "SOL " + formatPrice(price);
@@ -192,12 +201,17 @@ async function refreshSOLPrice() {
       return;
     } catch (error) {
       console.warn("[SOL PRICE] Market feed unavailable:", feed.url, error);
+      if (diagnosingDiscord && !firstFailure) {
+        firstFailure = error instanceof SyntaxError ? "PARSE" :
+          error?.name === "AbortError" || error?.name === "TimeoutError" ? "TIMEOUT" :
+          error instanceof TypeError ? "NETWORK" : "REQUEST";
+      }
     }
   }
 
   // Preserve the last valid quote if all price feeds temporarily fail.
   const label = lastSOLPrice === null
-    ? "SOL PRICE UNAVAILABLE"
+    ? (diagnosingDiscord ? "SOL ERR " + (firstFailure || "UNKNOWN") : "SOL PRICE UNAVAILABLE")
     : "SOL " + formatPrice(lastSOLPrice) + " (LAST)";
   priceMain.textContent = label;
   pricePurchase.textContent = label;
