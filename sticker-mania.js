@@ -114,39 +114,48 @@ const tierButtons = [
   ...document.querySelectorAll("[data-tier]")
 ];
 
-// Show a visible price over the capsule card, not a browser-native tooltip.
-const capsulePriceLabels = { common: "$0.99", rare: "$2.99", legendary: "$4.99" };
-const capsuleModal = document.querySelector(".purchase-modal");
-const capsulePricePopup = document.createElement("div");
-capsulePricePopup.setAttribute("aria-hidden", "true");
-capsulePricePopup.style.cssText =
-  "position:absolute;top:55%;z-index:4;transform:translate(-50%,-50%);" +
-  "padding:7px 15px;border:2px solid white;border-radius:8px;" +
-  "background:#10071f;color:white;font:bold clamp(13px,2.3vw,21px) Arial;" +
-  "box-shadow:0 0 15px #fff8;text-shadow:0 0 7px #fff;" +
-  "white-space:nowrap;pointer-events:none;display:none";
-capsuleModal.appendChild(capsulePricePopup);
-capsuleModal.addEventListener("pointermove", event => {
-  if (event.pointerType === "touch") return;
-  const box = capsuleModal.getBoundingClientRect();
-  const x = 100 * (event.clientX - box.left) / box.width;
-  const y = 100 * (event.clientY - box.top) / box.height;
-  const tier = y >= 20 && y <= 83
-    ? (x >= 13 && x <= 34 ? "common" :
-       x >= 40 && x <= 60 ? "rare" :
-       x >= 67 && x <= 87 ? "legendary" : null)
-    : null;
-  if (!tier) { capsulePricePopup.style.display = "none"; return; }
-  const price = capsulePriceLabels[tier];
-  if (capsulePricePopup.textContent !== price) {
-    capsulePricePopup.textContent = price;
-    capsulePricePopup.style.left =
-      { common: "23.5%", rare: "50%", legendary: "77%" }[tier];
+// Index machine: show a price only while hovering its three capsule cards.
+const indexMachine = document.getElementById("game-container");
+const indexPriceStyle = document.createElement("style");
+indexPriceStyle.textContent = `
+  .index-price-hover {
+    position: absolute;
+    top: 28%;
+    height: 36%;
+    width: 23%;
+    z-index: 2;
   }
-  capsulePricePopup.style.display = "block";
-});
-capsuleModal.addEventListener("pointerleave", () => {
-  capsulePricePopup.style.display = "none";
+  .index-price-hover::after {
+    content: attr(data-price);
+    position: absolute;
+    left: 50%;
+    top: 62%;
+    transform: translate(-50%, -50%);
+    padding: 5px 9px;
+    border: 2px solid white;
+    border-radius: 7px;
+    background: rgba(10, 5, 25, .95);
+    color: white;
+    font: bold clamp(11px, 2.5cqw, 20px) Arial, sans-serif;
+    text-shadow: 0 0 8px white;
+    box-shadow: 0 0 12px rgba(255,255,255,.75);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .index-price-hover:hover::after { opacity: 1; }
+`;
+document.head.appendChild(indexPriceStyle);
+[
+  { price: "$0.99", left: "2%" },
+  { price: "$2.99", left: "27%" },
+  { price: "$4.99", left: "52%" }
+].forEach(item => {
+  const zone = document.createElement("div");
+  zone.className = "index-price-hover";
+  zone.dataset.price = item.price;
+  zone.style.left = item.left;
+  indexMachine.appendChild(zone);
 });
 
 /* FUNCTION ERROR DETAILS */
