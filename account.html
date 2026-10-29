@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sticker Mania | Account</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Supabase SDK is loaded by the account script for the current host. -->
 
 <style>
 * {
@@ -397,13 +397,29 @@ img.capsule-art {
 </main>
 
 <script>
+(async () => {
+  // Match the machine's Supabase connection and browser session inside Discord.
+  const discordActivity = location.hostname.endsWith(".discordsays.com");
+  const libraryUrl = discordActivity
+    ? "/discord-jsdelivr/npm/@supabase/supabase-js@2"
+    : "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+  if (!window.supabase?.createClient) {
+    await new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = libraryUrl;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error("Supabase library unavailable"));
+      document.head.appendChild(script);
+    });
+  }
 
 // ========================================
 // SUPABASE
 // ========================================
 
-const SUPABASE_URL =
-  "https://jqvnrdjrkdjgjbmqmbbl.supabase.co";
+const SUPABASE_URL = discordActivity
+  ? location.origin + "/discord-supabase"
+  : "https://jqvnrdjrkdjgjbmqmbbl.supabase.co";
 
 const SUPABASE_KEY =
   "sb_publishable_jmEahTk4OssD_IrOZq_6iQ_P6QFFJr6";
@@ -785,6 +801,11 @@ client.auth.onAuthStateChange((event, session) => {
 
 loadAccount();
 
+})().catch(error => {
+  console.error("[COLLECTION STARTUP]", error);
+  const loading = document.getElementById("loading");
+  if (loading) loading.textContent = "Collection unavailable: " + error.message;
+});
 </script>
 
 </body>
