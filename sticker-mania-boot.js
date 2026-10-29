@@ -54,7 +54,7 @@
       if (!window.supabase?.createClient) {
         throw new Error("Supabase library was not initialized");
       }
-      return load(new URL("sticker-mania.js", base).href);
+      return load(new URL("sticker-mania.js?v=sol-price-diag-1", base).href);
     })
     .catch(error => {
       console.error("[STICKER MANIA STARTUP]", error);
