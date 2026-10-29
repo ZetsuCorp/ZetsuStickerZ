@@ -113,6 +113,9 @@ const authStatus = $("auth-status");
 const tierButtons = [
   ...document.querySelectorAll("[data-tier]")
 ];
+tierButtons.forEach(button => {
+  button.title = { common: "$0.99", rare: "$2.99", legendary: "$4.99" }[button.dataset.tier];
+});
 
 /* FUNCTION ERROR DETAILS */
 
