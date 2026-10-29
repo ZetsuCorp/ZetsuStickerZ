@@ -552,14 +552,18 @@ async function refreshBuyLog() {
     const { data, error } = await client.rpc("recent_sticker_buys", { max_rows: 15 });
     if (error) throw error;
     const list = $("buy-log-items");
-    const entries = (data || []).map(buy =>
+    const buys = data || [];
+    const entries = buys.map(buy =>
       (buy.buyer || "User") + " got " +
       (buy.sticker || "Sticker") + " (" + (buy.tier || "common") + ")"
     );
-    const snapshot = JSON.stringify(entries);
+    // Timestamp distinguishes identical-looking purchases by the same player.
+    const ids = buys.map(buy => String(buy.purchased_at || "") + "|" +
+      String(buy.buyer || "") + "|" + String(buy.sticker || "") + "|" + String(buy.tier || ""));
+    const snapshot = JSON.stringify(ids);
     if (snapshot === previousBuyLog) return;
-    const isNewActivity = previousBuyLog !== null &&
-      entries.length > 0 && (!JSON.parse(previousBuyLog).includes(entries[0]));
+    const previousIds = previousBuyLog === null ? null : new Set(JSON.parse(previousBuyLog));
+    const isNewActivity = previousIds !== null && ids.some(id => !previousIds.has(id));
     previousBuyLog = snapshot;
     list.replaceChildren();
     if (!entries.length) { list.textContent = "No purchases yet"; return; }
