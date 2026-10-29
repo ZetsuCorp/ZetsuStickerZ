@@ -14,7 +14,7 @@
         client_id: "1558904698025676851",
         response_type: "code",
         state: "",
-        prompt: "none",
+        prompt: "consent",
         scope: ["identify", "applications.commands"]
       });
       if (!code) throw new Error("Discord authorization was not granted");
@@ -81,7 +81,7 @@
       if (!window.supabase?.createClient) {
         throw new Error("Supabase library was not initialized");
       }
-      return load(new URL("sticker-mania.js?v=sol-price-diag-1", base).href);
+      return load(new URL("sticker-mania.js?v=discord-auth-2", base).href);
     })
     .catch(error => {
       console.error("[STICKER MANIA STARTUP]", error);
