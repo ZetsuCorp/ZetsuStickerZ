@@ -380,6 +380,18 @@ async function restoreUser() {
 
 void restoreUser();
 
+// Verify the currently connected Discord player on Activity launch.
+if (window.StickerDiscord?.isActivity) {
+  void window.StickerDiscord.authorizePlayer()
+    .then(player => {
+      console.info("[STICKERZ DISCORD PLAYER]", player.id);
+    })
+    .catch(error => {
+      console.warn("[STICKERZ DISCORD AUTH]", error);
+      authStatus.textContent = "Discord login failed: " + error.message;
+    });
+}
+
 /* AUTHENTICATED EDGE FUNCTIONS */
 
 async function invoke(name, body) {
