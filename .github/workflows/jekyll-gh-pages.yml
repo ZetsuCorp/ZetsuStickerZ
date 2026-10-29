@@ -35,6 +35,10 @@ jobs:
         with:
           source: ./
           destination: ./_site
+      - name: Refresh Discord SKU script cache
+        run: |
+          sed -i 's/sticker-mania-boot.js?v=casino-glow-2/sticker-mania-boot.js?v=discord-sku-ids-aa35a35/' ./_site/index.html
+          sed -i 's/sticker-mania.js?v=casino-glow-2/sticker-mania.js?v=discord-sku-ids-aa35a35/' ./_site/sticker-mania-boot.js
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
 
