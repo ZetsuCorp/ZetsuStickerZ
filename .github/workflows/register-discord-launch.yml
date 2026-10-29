@@ -1,0 +1,44 @@
+name: Register Discord Launch Command
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  register-launch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Register Zetsu StickerZ Activity entry point
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+        run: |
+          if [ -z "$DISCORD_BOT_TOKEN" ]; then
+            echo "::error::Add DISCORD_BOT_TOKEN in this repository's Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+          response_file="$(mktemp)"
+          status="$(curl --silent --show-error --output "$response_file" --write-out '%{http_code}' \
+            --request POST \
+            --url 'https://discord.com/api/v10/applications/1558904698025676851/commands' \
+            --header "Authorization: Bot $DISCORD_BOT_TOKEN" \
+            --header 'Content-Type: application/json' \
+            --data '{"name":"launch","description":"Launch Zetsu StickerZ","type":4,"handler":2,"integration_types":[0,1],"contexts":[0,1,2]}')"
+
+          if [ "$status" != "200" ] && [ "$status" != "201" ]; then
+            echo "::error::Discord rejected command registration (HTTP $status)."
+            cat "$response_file"
+            exit 1
+          fi
+
+          echo "Discord Launch Activity command registered successfully."
+          python3 - "$response_file" <<'PY'
+          import json, sys
+          with open(sys.argv[1], encoding="utf-8") as file:
+              command = json.load(file)
+          print("Command:", command.get("name"))
+          print("Command type:", command.get("type"))
+          print("Activity handler:", command.get("handler"))
+          PY
