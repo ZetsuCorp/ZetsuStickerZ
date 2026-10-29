@@ -159,14 +159,11 @@ async function refreshSOLPrice() {
   // Use the existing Discord-to-Supabase mapping for the display-only quote.
   if (window.StickerDiscord?.isActivity) {
     try {
-      const url = new URL("/discord-supabase/functions/v1/sol-price", window.location.origin);
-      const response = await fetch(url, {
-        method: "GET",
-        cache: "no-store",
-        signal: AbortSignal.timeout(9000)
+      // Use the same Supabase client that loads RECENT BUYS successfully.
+      const { data: quote, error } = await client.functions.invoke("sol-price", {
+        method: "GET"
       });
-      if (!response.ok) throw new Error("Price service returned HTTP " + response.status);
-      const quote = await response.json();
+      if (error) throw error;
       const price = Number(quote?.usd);
       if (!Number.isFinite(price) || price <= 0) throw new Error("Invalid SOL/USD quote");
       lastSOLPrice = price;
