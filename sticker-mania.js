@@ -738,25 +738,12 @@ async function buyCapsule(tier) {
     purchaseStatus.textContent = "OPENING DISCORD CHECKOUT...";
     try {
       const sdk = await window.StickerDiscord.ready;
-      const { skus } = await sdk.commands.getSkus();
-      const consumables = (skus || []).filter(sku => Number(sku.type) === 3);
-      // Match the tier anywhere in the existing SKU name; do not require
-      // a specific title format such as "(Rare)" or a suffix.
-      const byName = consumables.filter(sku =>
-        new RegExp("\\b" + tier + "\\b", "i").test(String(sku.name || ""))
-      );
-      // Existing store products can also be identified by their USD price.
-      const byPrice = consumables.filter(sku =>
-        String(sku.price?.currency || "").toUpperCase() === "USD" &&
-        Number(sku.price?.amount) === Math.round(CAPSULE_PRICES[tier] * 100)
-      );
-      const matches = byName.length ? byName : byPrice;
-      if (matches.length !== 1) {
-        console.error("[DISCORD SKU MATCH]", { tier, available: consumables });
-        throw new Error("Could not uniquely match " + tier +
-          " to a Discord store product; check the SKU mapping.");
-      }
-      const result = await sdk.commands.startPurchase({ sku_id: matches[0].id });
+      const skuIds = {
+        common: "1565225032777465947",
+        rare: "1565226783605923840",
+        legendary: "1565227244769771633"
+      };
+      const result = await sdk.commands.startPurchase({ sku_id: skuIds[tier] });
       purchaseStatus.textContent = Array.isArray(result) && result.length
         ? "DISCORD PURCHASE COMPLETE. STICKER DELIVERY NOT YET CONNECTED."
         : "DISCORD CHECKOUT CLOSED.";
