@@ -83,15 +83,46 @@ body {
 .buy-log {
   position: absolute; z-index: 4; left: 2%; bottom: 2%; width: 72%;
   height: 13%; overflow-y: auto; padding: 4px;
-  border: 1px solid rgba(148,59,206,.45); border-radius: 6px;
-  background: rgba(9,5,26,.45); color: #f4d5ff;
+  border: 1px solid rgba(83,235,245,.85); border-radius: 6px;
+  background: linear-gradient(110deg,rgba(5,12,28,.86),rgba(38,10,55,.86));
+  color: #f4d5ff;
+  box-shadow: 0 0 9px rgba(18,216,255,.48), inset 0 0 10px rgba(186,56,255,.3);
   font-size: clamp(6px, .72vw, 9px); line-height: 1.15;
   scrollbar-width: thin;
 }
-.buy-log-title { color: #64ffcb; font-size: inherit; font-weight: bold; margin-bottom: 2px; }
+.buy-log-title {
+  display: flex; align-items: center; justify-content: space-between; gap: 4px;
+  color: #64ffcb; font-size: inherit; font-weight: bold; margin-bottom: 2px;
+}
+.buy-log-live { display: inline-flex; align-items: center; gap: 3px; color: #b2ffe6; }
+.buy-log-dot {
+  width: 5px; height: 5px; border-radius: 50%; background: #45ffb0;
+  box-shadow: 0 0 5px #45ffb0;
+}
 .buy-log-entry {
   padding: 2px 0; border-top: 1px solid rgba(81,52,107,.4);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.buy-log.flash { animation: stickerBuyLogFlash 1.4s ease-out; }
+.buy-log-entry.new { animation: stickerBuyLogNew 1.8s ease-out; }
+@keyframes stickerBuyLogFlash {
+  0%, 100% {
+    border-color: rgba(83,235,245,.85);
+    box-shadow: 0 0 9px rgba(18,216,255,.48), inset 0 0 10px rgba(186,56,255,.3);
+  }
+  15%, 50% {
+    border-color: #fff4a3;
+    box-shadow: 0 0 10px 4px #ffd85f, 0 0 25px #ff44ed, inset 0 0 20px #ffdc6488;
+  }
+  32%, 70% { border-color: #35d7ff; box-shadow: 0 0 13px #3cf2ff; }
+}
+@keyframes stickerBuyLogNew {
+  0% { background: rgba(255,222,91,.9); color: #120a1b; }
+  55% { background: rgba(255,222,91,.22); }
+  100% { background: transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .buy-log.flash, .buy-log-entry.new { animation: none; }
 }
 
 /* GLOBAL VOLUME CONTROL — available during capsule videos */
@@ -580,7 +611,7 @@ body {
       </div>
 
       <section class="buy-log" aria-label="Recent sticker purchases">
-        <div class="buy-log-title">RECENT BUYS</div>
+        <div class="buy-log-title"><span>RECENT BUYS</span><span class="buy-log-live"><span class="buy-log-dot"></span>LIVE</span></div>
         <div id="buy-log-items">No purchases yet</div>
       </section>
 
