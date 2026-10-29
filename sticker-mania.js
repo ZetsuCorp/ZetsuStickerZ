@@ -380,11 +380,26 @@ async function restoreUser() {
 
 void restoreUser();
 
-// Verify the currently connected Discord player on Activity launch.
+// Discord Activity: sign into the matching existing account at startup.
 if (window.StickerDiscord?.isActivity) {
   void window.StickerDiscord.authorizePlayer()
-    .then(player => {
-      console.info("[STICKERZ DISCORD PLAYER]", player.id);
+    .then(async ({ player, linked, loginProof }) => {
+      if (!linked || !loginProof) {
+        authStatus.textContent = "Discord connected. Link your Sticker Mania account to continue.";
+        return;
+      }
+      const { data, error } = await client.auth.verifyOtp({
+        token_hash: loginProof,
+        type: "magiclink"
+      });
+      if (error || !data?.user) throw error || new Error("Account session unavailable");
+      if (discordId(data.user) !== player.id) {
+        await client.auth.signOut();
+        throw new Error("Discord account does not match Sticker Mania account");
+      }
+      currentUser = data.user;
+      updateLoginDisplay();
+      closeAuth();
     })
     .catch(error => {
       console.warn("[STICKERZ DISCORD AUTH]", error);
