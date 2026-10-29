@@ -739,13 +739,22 @@ async function buyCapsule(tier) {
     try {
       const sdk = await window.StickerDiscord.ready;
       const { skus } = await sdk.commands.getSkus();
-      const matches = (skus || []).filter(sku => {
-        const name = String(sku.name || "").trim().toLowerCase();
-        return Number(sku.type) === 3 &&
-          (name.includes("(" + tier + ")") || name.endsWith(" " + tier));
-      });
+      const consumables = (skus || []).filter(sku => Number(sku.type) === 3);
+      // Match the tier anywhere in the existing SKU name; do not require
+      // a specific title format such as "(Rare)" or a suffix.
+      const byName = consumables.filter(sku =>
+        new RegExp("\\b" + tier + "\\b", "i").test(String(sku.name || ""))
+      );
+      // Existing store products can also be identified by their USD price.
+      const byPrice = consumables.filter(sku =>
+        String(sku.price?.currency || "").toUpperCase() === "USD" &&
+        Number(sku.price?.amount) === Math.round(CAPSULE_PRICES[tier] * 100)
+      );
+      const matches = byName.length ? byName : byPrice;
       if (matches.length !== 1) {
-        throw new Error("Expected one published Discord consumable SKU for " + tier);
+        console.error("[DISCORD SKU MATCH]", { tier, available: consumables });
+        throw new Error("Could not uniquely match " + tier +
+          " to a Discord store product; check the SKU mapping.");
       }
       const result = await sdk.commands.startPurchase({ sku_id: matches[0].id });
       purchaseStatus.textContent = Array.isArray(result) && result.length
