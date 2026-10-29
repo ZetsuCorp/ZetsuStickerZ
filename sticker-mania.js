@@ -157,7 +157,9 @@ function formatPrice(price) {
 async function refreshSOLPrice() {
   const feeds = [
     {
-      url: "https://api.coinbase.com/v2/prices/SOL-USD/spot",
+      url: window.StickerDiscord?.isActivity
+        ? "/sol-price-feed/v2/prices/SOL-USD/spot"
+        : "https://api.coinbase.com/v2/prices/SOL-USD/spot",
       get: json => json?.data?.amount
     },
     {
