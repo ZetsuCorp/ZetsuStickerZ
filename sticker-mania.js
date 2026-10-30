@@ -157,6 +157,8 @@ document.head.appendChild(indexPriceStyle);
   zone.dataset.price = item.price;
   zone.style.left = item.left;
   zone.style.setProperty("--price-x", item.center);
+  zone.style.cursor = "pointer";
+  zone.addEventListener("click", openPurchase);
   indexMachine.appendChild(zone);
 });
 
