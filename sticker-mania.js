@@ -128,8 +128,8 @@ indexPriceStyle.textContent = `
   .index-price-hover::after {
     content: attr(data-price);
     position: absolute;
-    left: 50%;
-    top: 80%;
+    left: calc(50% + var(--price-shift-x, 0%));
+    top: calc(80% + var(--price-shift-y, 0%));
     transform: translate(-50%, -50%);
     display: grid;
     place-items: center;
@@ -148,14 +148,16 @@ indexPriceStyle.textContent = `
 `;
 document.head.appendChild(indexPriceStyle);
 [
-  { price: "$0.99", left: "12%" },
-  { price: "$2.99", left: "33%" },
+  { price: "$0.99", left: "12%", shiftX: "19%", shiftY: "-13%" },
+  { price: "$2.99", left: "33%", shiftX: "10%", shiftY: "-13%" },
   { price: "$4.99", left: "54%" }
 ].forEach(item => {
   const zone = document.createElement("div");
   zone.className = "index-price-hover";
   zone.dataset.price = item.price;
   zone.style.left = item.left;
+  if (item.shiftX) zone.style.setProperty("--price-shift-x", item.shiftX);
+  if (item.shiftY) zone.style.setProperty("--price-shift-y", item.shiftY);
   indexMachine.appendChild(zone);
 });
 
