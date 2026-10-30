@@ -114,32 +114,32 @@ const tierButtons = [
   ...document.querySelectorAll("[data-tier]")
 ];
 
-// Index machine: show a price only while hovering its three capsule cards.
+// Index machine: three small prices centered over the capsule buttons on hover.
 const indexMachine = document.getElementById("game-container");
 const indexPriceStyle = document.createElement("style");
 indexPriceStyle.textContent = `
   .index-price-hover {
     position: absolute;
     top: 55%;
-    height: 25%;
     width: 21%;
+    height: 25%;
     z-index: 2;
   }
   .index-price-hover::after {
     content: attr(data-price);
     position: absolute;
-    left: calc(50% + var(--price-shift-x, 0%));
-    top: calc(80% + var(--price-shift-y, 0%));
+    left: var(--price-x, 50%);
+    top: 75%;
     transform: translate(-50%, -50%);
     display: grid;
     place-items: center;
-    width: clamp(44px, 8cqw, 66px);
-    height: clamp(44px, 8cqw, 66px);
+    width: clamp(36px, 6cqw, 50px);
+    height: clamp(36px, 6cqw, 50px);
     border-radius: 50%;
     background: #10071f;
     color: white;
-    font: 900 clamp(10px, 2cqw, 17px) Arial, sans-serif;
-    text-shadow: 0 1px 3px #000, 0 0 8px #fff;
+    font: 900 clamp(9px, 1.5cqw, 14px) Arial, sans-serif;
+    text-shadow: 0 1px 3px #000, 0 0 6px #fff;
     white-space: nowrap;
     opacity: 0;
     pointer-events: none;
@@ -148,16 +148,15 @@ indexPriceStyle.textContent = `
 `;
 document.head.appendChild(indexPriceStyle);
 [
-  { price: "$0.99", left: "12%", shiftX: "19%", shiftY: "-13%" },
-  { price: "$2.99", left: "33%", shiftX: "10%", shiftY: "-13%" },
-  { price: "$4.99", left: "54%" }
+  { price: "$0.99", left: "12%", center: "69%" },
+  { price: "$2.99", left: "33%", center: "50%" },
+  { price: "$4.99", left: "54%", center: "50%" }
 ].forEach(item => {
   const zone = document.createElement("div");
   zone.className = "index-price-hover";
   zone.dataset.price = item.price;
   zone.style.left = item.left;
-  if (item.shiftX) zone.style.setProperty("--price-shift-x", item.shiftX);
-  if (item.shiftY) zone.style.setProperty("--price-shift-y", item.shiftY);
+  zone.style.setProperty("--price-x", item.center);
   indexMachine.appendChild(zone);
 });
 
