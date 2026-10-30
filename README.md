@@ -78,7 +78,7 @@ It is not intended to represent the full capabilities of the proposed in-game as
 
 **ZETSU StickerZ**  
 A Zetsumetsu Corporation Experience
-
+Zetsumetsu EOe™ | Zetsu EDU™ | Zetsu R&D CAGE - 20UB7 | © 2024 - 2026  Zetsumetsu Corporation™ | Artworqq Kevin Suber    
 Designed and developed by Artworqq Kevin J. Suber Jr.
 
 © 2026 The Zetsumetsu Corporation.
